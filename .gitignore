@@ -1,7 +1,9 @@
 # Data files are not included in the repository. The Data folder must
 # be downloaded separately and unzipped into the root of the repository. 
-
 /Data
+
+# Procedure on how to upload data (for personal use only).
+Readme.docx
 
 # History files
 .Rhistory
