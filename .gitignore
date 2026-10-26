@@ -5,6 +5,9 @@
 # Procedure on how to upload data (for personal use only).
 *.docx
 
+# API keys for Open Weather API
+*.Renviron
+
 # History files
 .Rhistory
 .Rapp.history

@@ -49,8 +49,8 @@ set.seed(12) # seed
 # API keys
 #
 OWM_key<-c()
-OWM_key[1]<-"c11725f7223113bfa06aee2a610b20b6" # maccallini.paolo@gmail.com
-OWM_key[2]<-"c9e988167532e62a1e8d2e4d3bd8388a" # macpa@tiscali.it
+OWM_key<-c(Sys.getenv("OWM_key1"),Sys.getenv("OWM_key2"))
+if (any(OWM_key=="")) warning("OpenWeather API keys not found in .Renviron")
 #
 #---- TimeStamp handling ------------------------------------------------------
 #

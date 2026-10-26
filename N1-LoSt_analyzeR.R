@@ -7,7 +7,7 @@
 #---- Directories and subroutines ------------------------------------------------
 #
 current_dir<-getwd()
-source("MDS_func.R")
+source("N1-LoSt_func.R")
 #
 for (sub in c("Histograms","Tables","Time_series","Score_analysis","Correlations",
               "Regressions","LeanTest")) {
@@ -841,10 +841,10 @@ type<-"cardiac"
 nd<-30
 Data.plot(mydata,nd,variables,start,end,folder_path,type)
 #
-variables<-c("date","Score_m","Steps","Steps.C","WL.bin","Run","Bike")
-start<-"2021-05-03"
+variables<-c("date","Score_m","Steps","Steps.B","Steps.C")
+start<-"2022-12-01"
 end<-0
-type<-"activity"
+type<-"steps"
 nd<-30
 Data.plot(mydata,nd,variables,start,end,folder_path,type)
 #
