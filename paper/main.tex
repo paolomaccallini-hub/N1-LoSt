@@ -1,0 +1,201 @@
+% =============================================================================
+% N1-LoSt: paper template
+%
+% Location: <repo>/paper/main.tex
+% Figures:  read from <repo>/Output/ (see \outdir below)
+% Build:    latexmk -pdf main.tex   (or "Build LaTeX project" in VS Code)
+% =============================================================================
+\documentclass[11pt,a4paper]{article}
+
+% --- Encoding, fonts, layout -------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}  % scalable fonts (needed by microtype)
+\usepackage{microtype}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+% --- Maths, units, tables ----------------------------------------------------
+\usepackage{amsmath,amssymb}
+\usepackage{siunitx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+
+% --- Figures -----------------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+
+% --- Authors and affiliations ------------------------------------------------
+\usepackage{authblk}
+
+% --- Line numbers (useful for drafts and reviews; comment out for final) ----
+\usepackage{lineno}
+\linenumbers
+
+% --- References --------------------------------------------------------------
+\usepackage[numbers,sort&compress]{natbib}
+\bibliographystyle{unsrtnat}
+
+% --- Links (load last) -------------------------------------------------------
+\usepackage[hidelinks]{hyperref}
+
+% =============================================================================
+% Figures from the Output folder of the repository
+% =============================================================================
+\newcommand{\outdir}{../Output/}
+
+% \outfig{path inside Output}{width as fraction of \textwidth}{caption}{label}
+% If the file does not exist, a box with its path is shown instead.
+\newcommand{\outfig}[4]{%
+  \begin{figure}[htbp]
+    \centering
+    \IfFileExists{\outdir#1}%
+      {\includegraphics[width=#2\textwidth]{\outdir#1}}%
+      {\fbox{\parbox[c][4cm][c]{0.8\textwidth}{\centering\small Missing figure:\\
+        \texttt{\detokenize{#1}}}}}%
+    \caption{#3}\label{#4}
+  \end{figure}}
+
+% Same, without the figure environment (for subfigures)
+\newcommand{\outimg}[2]{%
+  \IfFileExists{\outdir#1}%
+    {\includegraphics[width=#2\linewidth]{\outdir#1}}%
+    {\fbox{\parbox[c][3cm][c]{0.9\linewidth}{\centering\scriptsize Missing:\\
+      \texttt{\detokenize{#1}}}}}}
+
+% =============================================================================
+% Title
+% =============================================================================
+\title{N-of-1 Longitudinal Study of a Patient with ME/CFS: Methods and Preliminary Results}
+\author[1]{Paolo Maccallini}
+\affil[1]{``Independent researcher'', Rome, Italy}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+% =============================================================================
+\begin{abstract}
+% Background, methods, results, conclusions (about 250 words).
+
+\end{abstract}
+
+\noindent\textbf{Keywords:} n-of-1; intensive longitudinal data; ME/CFS; KEYWORD; KEYWORD
+
+% =============================================================================
+\section{Introduction}\label{sec:introduction}
+% =============================================================================
+
+
+% =============================================================================
+\section{Methods}\label{sec:methods}
+% =============================================================================
+
+\subsection{Study design}\label{sec:design}
+
+
+\subsection{Data acquisition}\label{sec:acquisition}
+
+\subsubsection{Symptom scores}
+
+\subsubsection{Physical activity}
+
+\subsubsection{Heart rate variability}
+
+\subsubsection{Blood pressure and lean test}
+
+\subsubsection{Body composition}
+
+\subsubsection{Indoor and outdoor environment}
+
+\subsubsection{EEG and fNIRS}
+
+\subsubsection{Blood tests}
+
+\subsubsection{Drugs and supplements}
+
+
+\subsection{Data processing}\label{sec:processing}
+
+
+\subsection{Statistical analysis}\label{sec:statistics}
+
+
+% =============================================================================
+\section{Results}\label{sec:results}
+% =============================================================================
+
+% Example: single figure from Output/
+\outfig{Time_series/fourier.jpeg}{0.8}
+  {CAPTION.}
+  {fig:fourier}
+
+% Example: two figures side by side
+\begin{figure}[htbp]
+  \centering
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \outimg{Time_series/decomposition.jpeg}{1}
+    \caption{CAPTION A.}\label{fig:pair-a}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \outimg{steps.jpg}{1}
+    \caption{CAPTION B.}\label{fig:pair-b}
+  \end{subfigure}
+  \caption{CAPTION OF THE PAIR.}\label{fig:pair}
+\end{figure}
+
+% Example: table
+\begin{table}[htbp]
+  \centering
+  \caption{CAPTION.}\label{tab:example}
+  \begin{tabular}{lrr}
+    \toprule
+    Variable & Value & Unit \\
+    \midrule
+    NAME & 0.0 & \si{ms} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% Example of references in the text:
+% as shown in Figure~\ref{fig:fourier} and Table~\ref{tab:example} \citep{bh1995}.
+
+
+% =============================================================================
+\section{Discussion}\label{sec:discussion}
+% =============================================================================
+
+\subsection{Limitations}\label{sec:limitations}
+
+
+% =============================================================================
+\section{Conclusions}\label{sec:conclusions}
+% =============================================================================
+
+
+% =============================================================================
+\section*{Data and code availability}
+% =============================================================================
+Code: \url{https://github.com/USERNAME/N1-LoSt}.
+
+
+% =============================================================================
+\section*{Acknowledgements}
+% =============================================================================
+
+
+% =============================================================================
+\bibliography{refs}
+
+% =============================================================================
+\appendix
+\section{Supplementary material}\label{sec:appendix}
+% =============================================================================
+
+
+\end{document}

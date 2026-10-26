@@ -1,5 +1,8 @@
+# Data files are not included in the repository. The Data folder must
+# be downloaded separately and unzipped into the root of the repository. 
+
 /Data
-/Originali_analisi
+
 # History files
 .Rhistory
 .Rapp.history
@@ -49,3 +52,14 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# LaTeX build files (add these lines to the repository .gitignore)
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.toc
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz

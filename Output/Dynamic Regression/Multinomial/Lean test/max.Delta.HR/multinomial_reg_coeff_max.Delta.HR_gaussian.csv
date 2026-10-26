@@ -1,0 +1,7 @@
+variable,0,1,2,4,7,days on,days off,size,sd/mean
+min.PP,-0.29,NS,-0.13,-0.15,-0.16,400,0,400,0.25
+min.Delta.Sys,NS,NS,NS,NS,NS,NA,NA,400,-0.62
+ST,NS,NS,NS,NS,NS,401,1523,1924,2.08
+ST.hour,NS,NS,NS,NS,NS,407,0,407,0.1
+Steps.C,NS,NS,NS,NS,NS,1387,0,1387,0.6
+TA.out,NS,NS,NS,NS,NS,1742,0,1742,0.08
