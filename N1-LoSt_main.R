@@ -125,11 +125,12 @@ Score$Cefuroxime<-as.numeric(Score$Cefuroxime)
 Score$Pioglitazone<-as.numeric(Score$Pioglitazone)
 Score$Deursil<-as.numeric(Score$Deursil)
 #
-# Orthostatic intolleance
+# Orthostatic intolleance/vascular
 #
 Score$Mestinon<-as.numeric(Score$Mestinon)
 Score$Etilefrine<-as.numeric(Score$Etilefrine)
 Score$Midodrine<-as.numeric(Score$Midodrine)
+Score$Nimodipine<-as.numeric(Score$Nimodipine)
 Score$Compression.suit<-as.numeric(Score$Compression.suit)
 Score$Compression.socks<-as.numeric(Score$Compression.socks)
 #
@@ -275,7 +276,8 @@ for (i in 1:nrow(Score)) {
   }
 }
 #
-##--- Estimate watch steps (Steps.B) from phone steps (Steps): Steps.C ---------
+#
+#---- Estimate watch steps (Steps.B) from phone steps (Steps): Steps.C ---------
 #
 # Estimate missing values of watch steps (Steps.B) from phone steps (Steps) and 
 # use the prediction to build a complete time series Steps.C
@@ -374,16 +376,16 @@ for (i in 1:nrow(Score)) {
   }
 }
 #
-##--- Total daily mechanical work (joule) -------------------------------------
+#---- Total daily mechanical work (joule) -------------------------------------
 #
 Score<-WORK(Score)
 Score$Work<-Score$Work.a+Score$Work.an 
 #
-##--- Derive deltas from lean test ---------------------------------------------
+#---- Derive deltas from lean test ---------------------------------------------
 #
 LeanTest<-LeanTest_func(Score)
 #
-##--- Derive cardiac power index (CPI)------------------------------------------
+#---- Derive cardiac power index (CPI)------------------------------------------
 #
 Score<-Cardiac.Derived(Score)
 #

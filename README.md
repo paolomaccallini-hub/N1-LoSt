@@ -1,4 +1,4 @@
-# N1-LoSt: N-of-1 Longitudinal Study
+# N-of-1 Longitudinal Study
 
 ## under construction
 
