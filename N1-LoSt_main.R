@@ -335,13 +335,14 @@ Data.plot(Score,nd,variables,start,end,folder_path,type,detrend=F,scaling=F)
 Score<-WORK(Score)
 Score$Work<-Score$Work.a+Score$Work.an 
 #
-#---- Derive deltas from lean test ---------------------------------------------
 #
-LeanTest<-LeanTest_func(Score)
-#
-#---- Derive cardiac power index (CPI)------------------------------------------
+#---- Derive cardiac power index (CPI) -----------------------------------------
 #
 Score<-Cardiac.Derived(Score)
+#
+#---- Derive deltas from lean test, max and mean values ------------------------
+#
+LeanTest<-LeanTest_func(Score)
 #
 #---- RR series analysis -------------------------------------------------------
 #

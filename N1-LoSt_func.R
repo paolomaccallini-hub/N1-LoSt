@@ -214,7 +214,7 @@ Steps_impute<-function(Score) {
       file.name<-file.path(folder_path,"regression_model.jpg")
       jpeg(file.name,quality=100,res=100,width=800,height=800)
       plot(mydata$Steps,mydata$Steps.B,
-           main=paste0("Regression: steps vs steps.B, threshold = ",t," days"),
+           main=paste0("Regression: steps vs steps.B, threshold = ",t," steps"),
            xlab="Steps",ylab="Steps.B",pch=16,col=mydata$class)
       Steps.X<-seq(0,tests$treshold[best],1)
       Steps.Y<-predict(fit.low,newdata=data.frame(Steps=Steps.X))
@@ -239,6 +239,105 @@ Steps_impute<-function(Score) {
       return(mydata)
     }
   }
+}
+#
+#---- Mechanical work and PC activity-------------------------------------------
+#
+# It calculates mechanical work in a day
+#
+WORK<-function(mydata) {
+  #
+  joule.step.1<-2.4*90*0.7 # walking: 2.4 J/kg/m x 90 kg x 0.7 m (https://pubmed.ncbi.nlm.nih.gov/31292471/)
+  joule.step.2<-3.4*90*1.0 # running: 3.4 J/kg/m x 90 kg x 1.0 m (https://journals.physiology.org/doi/full/10.1152/japplphysiol.01177.2001)
+  watt.bike<-100/0.23 # cycling: 100 W mechanical at ~23% net efficiency, net of resting metabolism (https://pmc.ncbi.nlm.nih.gov/articles/PMC6557926/
+  joule.wl<-600000 # weight training: net expenditure for ~30 min, males (https://pmc.ncbi.nlm.nih.gov/articles/PMC6710320/)
+  #
+  len<-nrow(mydata)
+  #
+  work.a<-rep(NA,len) # aerobic work (walking, running, cycling) in joule
+  work.an<-rep(NA,len) # anaerobic work (walking, running, cycling) in joule
+  #
+  for (i in 1:len) {
+    df<-subset.data.frame(mydata,date==mydata$date[i])
+    if (!is.na(df$Steps.C[1])&!is.na(df$Bike[1])&!is.na(df$Run[1])) {
+      work.a[i]<-0
+      work.a[i]<-work.a[i]+df$Steps.C[1]*joule.step.1 # assuming joule.step.1 J/step
+      work.a[i]<-work.a[i]+watt.bike*60*df$Bike[1]
+      work.a[i]<-work.a[i]+(joule.step.2-joule.step.1)*150*df$Run[1] # assuming 150 steps for minute of running
+    }
+  }
+  #
+  for (i in 1:len) {
+    df<-subset.data.frame(mydata,date==mydata$date[i])
+    if (!is.na(df$WL[1])) {
+      work.an[i]<-0
+      if (df$WL[1]=="biceps") work.an[i]<-work.an[i]+1*joule.wl 
+      if (df$WL[1]=="triceps") work.an[i]<-work.an[i]+1*joule.wl
+      if (df$WL[1]=="delts") work.an[i]<-work.an[i]+1.5*joule.wl
+      if (df$WL[1]=="pecs") work.an[i]<-work.an[i]+2*joule.wl
+      if (df$WL[1]=="back") work.an[i]<-work.an[i]+2*joule.wl
+      if (df$WL[1]=="legs") work.an[i]<-work.an[i]+2.5*joule.wl
+      if (df$WL[1]=="total") work.an[i]<-work.an[i]+3*joule.wl
+    }
+  }
+  #
+  mydata$Work.a<-work.a
+  mydata$Work.an<-work.an
+  return(mydata)
+}
+#
+# Read file from Activity watch. It measures total daily not-afk time
+#
+AWatch_func<-function() {
+  #
+  # Read the txt file with tabs 
+  #
+  current_dir<-getwd()
+  sub_dir<-"ActivityWatch"
+  folder_path<-file.path(current_dir,"Data",sub_dir)
+  file.name<-list.files(folder_path)
+  file.name<-paste0(folder_path,"/",file.name)
+  mydata<-read.csv(file.name[1],header=T,sep=",")
+  if (length(file.name)>1) {
+    for (i in 2:length(file.name)) mydata<-rbind(mydata,read.csv(file.name[i],header=T,sep=","))
+  }
+  mydata<-unique(mydata)
+  #
+  # Keep only not-afk durations 
+  #
+  mydata<-subset.data.frame(mydata,status=="not-afk")
+  #
+  # Add epoch
+  #
+  for (i in 1:nrow(mydata)) {
+    mydata$date[i]<-epoch(mydata$timestamp[i],format="YMD")
+  }
+  #
+  # For each timestamp keep only the longest measure
+  #
+  uts<-unique(mydata$timestamp)
+  for (i in 1:length(uts)) {
+    df<-subset.data.frame(mydata,timestamp==uts[i])
+    max_not_afk<-max(df$duration)
+    r<-which(mydata$timestamp%in%df$timestamp)
+    mydata$duration[r]<-rep(max_not_afk,length(r))
+  }
+  mydata<-unique(mydata)
+  #
+  # Calculate daily values
+  #
+  n.days<-length(unique(mydata$date))
+  mydata.daily<-data.frame(notafk=rep(NA,n.days),date=rep(NA,n.days))
+  for (i in 1:n.days) {
+    df<-subset.data.frame(mydata,date==unique(mydata$date)[i])
+    mydata.daily$notafk[i]<-sum(df$duration)
+    mydata.daily$date[i]<-df$date[1]
+  }
+  #
+  # Results
+  #
+  return(mydata.daily)
+  #
 }
 #
 #---- Equivalent drugs ---------------------------------------------------------
@@ -436,14 +535,28 @@ LeanTest_func<-function(Score){
   }
   mydata.Dia<-mydata[,-1] # remove first column
   #
+  # PP
+  #
+  variables<-c("PP.1","PP.2","PP.3","PP.4","PP.5","PP.6","PP.7","PP.8","PP.9","PP.10","date")
+  mydata.PP<-subset.data.frame(Score,select=variables)
+  #
   mydata<-merge(mydata.HR,mydata.Sys,by="date",all=T)
   mydata<-merge(mydata,mydata.Dia,by="date",all=T)
+  mydata<-merge(mydata,mydata.PP,by="date",all=T)
   #
   # Add overall measures for standing test and return results
   #
   mydata$max.Delta.HR<-do.call(pmax,c(mydata[paste0("Delta.HR.",1:10)],na.rm=TRUE))
+  mydata$mean.Delta.HR<-rowMeans(mydata[paste0("Delta.HR.",1:10)],na.rm=TRUE)
+  mydata$mean.Delta.HR[is.nan(mydata$mean.Delta.HR)]<-NA # days without a lean test
+  #
   mydata$min.PP<-do.call(pmin,c(mydata[paste0("PP.",1:10)],na.rm=TRUE))
+  mydata$mean.PP<-rowMeans(mydata[paste0("PP.",1:10)],na.rm=TRUE)
+  mydata$mean.PP[is.nan(mydata$mean.PP)]<-NA # days without a lean test
+  #
   mydata$min.Delta.Sys<-do.call(pmin,c(mydata[paste0("Delta.Sys.",1:10)],na.rm=TRUE))
+  mydata$mean.Delta.Sys<-rowMeans(mydata[paste0("Delta.Sys.",1:10)],na.rm=TRUE)
+  mydata$mean.Delta.Sys[is.nan(mydata$mean.Delta.Sys)]<-NA # days without a lean test
   #
   return(mydata)
 }
@@ -1570,104 +1683,7 @@ fNIRS_func<-function(year) {
   return(myconc)
 }
 #
-#---- Activities and blood work ------------------------------------------------
-#
-# It calculates mechanical work in a day
-#
-WORK<-function(mydata) {
-  #
-  joule.step.1<-150 # joule for step when walking
-  joule.step.2<-628 # joule for step when running
-  watt.bike<-100 # watt for cycling
-  joule.wl<-600000 # joule for smallest training session with weights
-  #
-  len<-nrow(mydata)
-  #
-  work.a<-rep(NA,len) # aerobic work (walking, running, cycling) in joule
-  work.an<-rep(NA,len) # anaerobic work (walking, running, cycling) in joule
-  #
-  for (i in 1:len) {
-    df<-subset.data.frame(mydata,date==mydata$date[i])
-    if (!is.na(df$Steps.C[1])&!is.na(df$Bike[1])&!is.na(df$Run[1])) {
-      work.a[i]<-0
-      work.a[i]<-work.a[i]+df$Steps.C[1]*joule.step.1 # assuming joule.step.1 J/step
-      work.a[i]<-work.a[i]+watt.bike*60*df$Bike[1]
-      work.a[i]<-work.a[i]+(joule.step.2-joule.step.1)*150*df$Run[1] # assuming 150 steps for minute of running
-    }
-  }
-  #
-  for (i in 1:len) {
-    df<-subset.data.frame(mydata,date==mydata$date[i])
-    if (!is.na(df$WL[1])) {
-      work.an[i]<-0
-      if (df$WL[1]=="biceps") work.an[i]<-work.an[i]+1*joule.wl 
-      if (df$WL[1]=="triceps") work.an[i]<-work.an[i]+1*joule.wl
-      if (df$WL[1]=="delts") work.an[i]<-work.an[i]+1*joule.wl
-      if (df$WL[1]=="pecs") work.an[i]<-work.an[i]+2*joule.wl
-      if (df$WL[1]=="back") work.an[i]<-work.an[i]+3*joule.wl
-      if (df$WL[1]=="legs") work.an[i]<-work.an[i]+3*joule.wl
-      if (df$WL[1]=="total") work.an[i]<-work.an[i]+2*joule.wl
-    }
-  }
-  #
-  mydata$Work.a<-work.a
-  mydata$Work.an<-work.an
-  return(mydata)
-}
-#
-# Read file from Activity watch. It measures total daily not-afk time
-#
-AWatch_func<-function() {
-  #
-  # Read the txt file with tabs 
-  #
-  current_dir<-getwd()
-  sub_dir<-"ActivityWatch"
-  folder_path<-file.path(current_dir,"Data",sub_dir)
-  file.name<-list.files(folder_path)
-  file.name<-paste0(folder_path,"/",file.name)
-  mydata<-read.csv(file.name[1],header=T,sep=",")
-  if (length(file.name)>1) {
-    for (i in 2:length(file.name)) mydata<-rbind(mydata,read.csv(file.name[i],header=T,sep=","))
-  }
-  mydata<-unique(mydata)
-  #
-  # Keep only not-afk durations 
-  #
-  mydata<-subset.data.frame(mydata,status=="not-afk")
-  #
-  # Add epoch
-  #
-  for (i in 1:nrow(mydata)) {
-    mydata$date[i]<-epoch(mydata$timestamp[i],format="YMD")
-  }
-  #
-  # For each timestamp keep only the longest measure
-  #
-  uts<-unique(mydata$timestamp)
-  for (i in 1:length(uts)) {
-    df<-subset.data.frame(mydata,timestamp==uts[i])
-    max_not_afk<-max(df$duration)
-    r<-which(mydata$timestamp%in%df$timestamp)
-    mydata$duration[r]<-rep(max_not_afk,length(r))
-  }
-  mydata<-unique(mydata)
-  #
-  # Calculate daily values
-  #
-  n.days<-length(unique(mydata$date))
-  mydata.daily<-data.frame(notafk=rep(NA,n.days),date=rep(NA,n.days))
-  for (i in 1:n.days) {
-    df<-subset.data.frame(mydata,date==unique(mydata$date)[i])
-    mydata.daily$notafk[i]<-sum(df$duration)
-    mydata.daily$date[i]<-df$date[1]
-  }
-  #
-  # Results
-  #
-  return(mydata.daily)
-  #
-}
+#---- Blood work ---------------------------------------------------------------
 #
 # Read and edit results of blood work
 # 

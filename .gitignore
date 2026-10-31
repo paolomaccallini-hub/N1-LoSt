@@ -8,6 +8,9 @@
 # API keys for Open Weather API
 *.Renviron
 
+# Pieces of code that are not part of the package
+Notes.R
+
 # History files
 .Rhistory
 .Rapp.history
