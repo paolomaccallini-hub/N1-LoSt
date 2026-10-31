@@ -158,6 +158,62 @@ of \texttt{Steps}, \texttt{Steps.B}, and \texttt{Steps.C} are shown in Figure~\r
 
 \subsubsection{Heart rate variability}
 
+Heart rate variability (HRV) was assessed from five-minute recordings of RR intervals,
+following the protocol and the analysis pipeline described in detail in a previous
+work \citep{maccallini2024hrv}, to which the reader is referred for an overview on
+HRV, the definition of the indices, their physiological interpretation, and an introduction to
+spectral analysis by Discrete Fourier Transform. Recordings started in July 2022 and 
+were performed once a day, in the morning, in the supine position, after five minutes of rest in the same position.
+RR intervals were acquired for about five minutes with a Polar H9 sensor mounted on a
+moistened chest belt, a type of device whose agreement with the electrocardiogram has
+been documented \citep{bourdillon2017}. The sensor was connected via Bluetooth to a
+smartphone running the Elite HRV application, and the RR series were exported in text
+format, one file per recording.
+
+The series were analysed with the R package RHRV \citep{garcia2017rhrv}. For each
+recording, the instantaneous non-interpolated heart rate was computed from the RR
+intervals, and anomalous beats (ectopic beats and artefacts) were removed with the
+adaptive filter of the package, which discards beats that differ too much from the
+preceding ones or that fall outside physiological limits (default parameters). The
+filtered series was then linearly interpolated at \SI{4}{\hertz} to obtain the evenly
+sampled signal required by the discrete Fourier transform. Recordings shorter than
+\SI{240}{\second} or longer than \SI{360}{\second} were excluded, and when more than
+one recording was available for the same day only the first one was retained.
+
+In the time domain, the following indices were computed: mean heart rate (HR) and
+mean RR interval (RR); the standard deviation of the RR intervals (SDNN) and the HRV
+triangular index (HRVi), as measures of overall variability; the root mean square of
+successive differences (rMSSD) and the percentage of successive differences greater
+than \SI{50}{\milli\second} (pNN50), as measures of the high-frequency, vagally
+mediated component \citep{garcia2017rhrv,shaffer2017}.
+
+In the frequency domain, the power spectrum was estimated with the short-time Fourier
+transform, using a single window of \SI{300}{\second}, since
+for five-minute recordings shorter windows give less reliable estimates of the
+low-frequency power \citep{bourdillon2017}. The power was integrated over the
+low-frequency (LF, \SIrange{0.04}{0.15}{\hertz}) and the high-frequency (HF,
+\SIrange{0.15}{0.40}{\hertz}) bands \citep{taskforce1996}. The ultra-low- and
+very-low-frequency bands were not considered, since they cannot be reliably estimated
+from five-minute recordings \citep{taskforce1996}. From LF and HF, the following derived
+quantities were computed: the ratio LF/HF; the total power, defined here as
+$\mathrm{TotPower} = \mathrm{LF} + \mathrm{HF}$; and the normalised powers
+$\mathrm{LF_{nu}} = \mathrm{LF}/(\mathrm{LF}+\mathrm{HF})$ and
+$\mathrm{HF_{nu}} = \mathrm{HF}/(\mathrm{LF}+\mathrm{HF})$, which reduce the within- and
+between-subject variability of the absolute powers \citep{burr2007}. The distributions
+of the time-domain and frequency-domain indices over all the recordings are shown in
+Figures~\ref{fig:hrv-time} and~\ref{fig:hrv-freq}.
+
+\outfig{Histograms/hist_time_domain.jpeg}{0.9}
+  {Distributions of the time-domain HRV indices over all the daily five-minute
+   recordings. The mean of each distribution is indicated by a red line.}
+  {fig:hrv-time}
+
+\outfig{Histograms/hist_frequency_domain.jpeg}{0.9}
+  {Distributions of the frequency-domain HRV indices over all the daily five-minute
+   recordings. LFonHF is the ratio LF/HF; TotPower is LF\,+\,HF. The mean of each
+   distribution is indicated by a red line.}
+  {fig:hrv-freq}
+
 \subsubsection{Blood pressure and lean test}
 
 \subsubsection{Body composition}

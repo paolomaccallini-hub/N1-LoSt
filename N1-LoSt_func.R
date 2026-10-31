@@ -19,7 +19,6 @@ library(boot) # for cv.glm()
 library(car) # for vif()
 library(xts)
 library(zoo)
-library(pracma) # for numerical integration
 library(ellipse) # for generating ellipse
 library(readxl) # for reading .xlsx format
 library(fmsb) # for the radar chart
@@ -494,7 +493,7 @@ HRV<-function(hrv.data,days) {
   for (i in 1:days) {
     hrv.data[[i]]<-CreateFreqAnalysis(hrv.data[[i]])
     # hrv.data[[i]]<-CalculatePSD(hrv.data[[i]],method="pgram",doPlot=F) # alternative method, needs a different downstream script
-    hrv.data[[i]]<-CalculatePowerBand(hrv.data[[i]],indexFreqAnalysis=1,LFmin=0.05,
+    hrv.data[[i]]<-CalculatePowerBand(hrv.data[[i]],indexFreqAnalysis=1,LFmin=0.04,
                                       LFmax=0.15,HFmin=0.15,HFmax=0.4,size=300,shift=300,
                                       type="fourier")
   }
