@@ -104,6 +104,58 @@ HRV; POTS
 
 \subsubsection{Physical activity}
 
+Daily step counts were recorded with a smartphone (Redmi Note 11S/Pedometer Step Counter) 
+from January 2023, and with a wrist-worn watch (Dyurawa) from March 2025. The phone records only the
+steps taken while it is carried, so it misses most activity at home, whereas the watch
+records activity throughout the day; watch counts were therefore taken as the reference
+measure.
+
+Gaps of up to four consecutive days were filled by linear interpolation in both series, if missing
+days were less than 10\%. Days on which the watch recorded fewer steps than the phone were considered days of
+watch non-wear or malfunction, and their watch counts were set to missing.
+
+To obtain a continuous series of watch-equivalent steps over the whole study period
+(\texttt{Steps.C}), watch counts were estimated from phone counts on days without watch
+data. The relationship between the two counts differs between days spent at home, when
+the phone is mostly not carried and its count carries little information, and days with
+outdoor activity, when the phone is carried. Days were therefore divided into two regimes
+by a threshold $t$ on phone steps (\texttt{Steps}), and a linear regression of watch steps 
+(\texttt{Steps.B}) on phone steps was fitted separately in each regime. The threshold was chosen by scanning values from
+50 to 2000 phone steps and selecting the one that minimised the total sum of squared
+residuals of the two regressions, requiring at least 20 days in each regime
+(see Figure~\ref{fig:steps-model}). On days with watch data,
+\texttt{Steps.C} equals the measured watch count; on the other days, it is the value
+predicted by the regression of the corresponding regime.
+
+The imputation was validated by fitting the model on the first 80\% of the watch period
+and comparing the values predicted for the remaining 20\% with the measured ones (Figure~\ref{fig:steps-validation}). 
+The relative mean absolute error, $\sum|\hat{y}_i - y_i| / \sum y_i$, and the relative mean error
+(bias), $\sum(\hat{y}_i - y_i) / \sum y_i$, are indicated on the plot. Most days were slightly overestimated,
+while the most active days, and outdoor activity without the phone, were underestimated. The time series 
+of \texttt{Steps}, \texttt{Steps.B}, and \texttt{Steps.C} are shown in Figure~\ref{fig:steps}.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{../Output/Steps/regression_model.jpg}
+    \caption{Regression model.}\label{fig:steps-model}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{../Output/Steps/regression_validation.jpg}
+    \caption{Validation.}\label{fig:steps-validation}
+  \end{subfigure}
+  \caption{Imputation of watch steps (\texttt{Steps.B}) from phone steps (\texttt{Steps}).}\label{fig:steps}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../Output/Steps/normplot_10_Steps.jpeg}
+  \caption{Daily steps averaged over non-overlapping 10-day blocks.}
+  \label{fig:steps}
+\end{figure}
+
 \subsubsection{Heart rate variability}
 
 \subsubsection{Blood pressure and lean test}

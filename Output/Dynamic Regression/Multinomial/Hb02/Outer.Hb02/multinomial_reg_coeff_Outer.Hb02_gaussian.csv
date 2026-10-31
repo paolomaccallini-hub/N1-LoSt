@@ -1,0 +1,9 @@
+variable,0,1,2,7,days on,days off,size,sd/mean
+Theta,NS,-0.19,-0.18,-0.22,450,0,450,0.16
+Alpha,0.21,NS,NS,NS,450,0,450,0.19
+Beta,NS,-0.25,NS,NS,450,0,450,0.24
+Gamma,NS,NS,NS,NS,450,0,450,0.41
+MRT,NS,NS,NS,NS,978,0,978,0.07
+Temp,0.11,NS,NS,NS,1267,0,1267,0.01
+SpO2,NS,NS,0.11,0.12,818,0,818,0.01
+Steps.B,NS,NS,NS,NS,510,0,510,0.64

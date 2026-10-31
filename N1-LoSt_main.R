@@ -294,12 +294,12 @@ print(paste("Days with missing step count by cell phone:",missing.steps,"%"))
 # Impute missing values to Steps if less than 10%
 #
 if (missing.steps<10) {
-  Score$Steps<-zoo::na.approx(Score$Steps,maxgap=4,na.rm=FALSE)
+  Score$Steps<-zoo::na.approx(Score$Steps,maxgap=5,na.rm=FALSE)
 }
 #
 # Steps.B should more than Steps 
 #
-index<-which(Score$Steps.B<(Score$Steps+10))
+index<-which(Score$Steps.B<(Score$Steps+50))
 Score$Steps.B[index]<-NA
 #
 # Count missing values to Steps.B
@@ -309,72 +309,26 @@ missing.steps<-length(which(is.na(Score$Steps.B[first.step:nrow(Score)])))
 missing.steps<-round(100*missing.steps/(nrow(Score)-first.step),1)
 print(paste("Days with missing step count by watch:",missing.steps,"%"))
 #
-# Impute missing values to Steps if less than 10%
+# Impute missing values to Steps.B if less than 10%
 #
 if (missing.steps<10) {
-  Score$Steps.B<-zoo::na.approx(Score$Steps.B,maxgap=4,na.rm=FALSE)
+  Score$Steps.B<-zoo::na.approx(Score$Steps.B,maxgap=5,na.rm=FALSE)
 }
 #
-# Create Steps.C, a copy of Steps.B
+# Create Steps.C: watch steps imputed from Steps for days without Steps.B
 #
-Score$Steps.C<-Score$Steps.B
+df<-Steps_impute(Score)
+Score$Steps.C<-df$Steps.C
 #
-###-- Search for the optimal threshold between low and high activity -----------
+# Plot time series
 #
-# Steps has a bimodal distribution: one peak for days at home and one for days
-# with some activity outdoors. We perform two regressions: one for low activity,
-# one for high.
-#
-tests<-data.frame(treshold=50:2000,SSE=NA)
-temp<-data.frame(Steps=Score$Steps,Steps.B=Score$Steps.B,class=NA)
-for (r in seq_len(nrow(tests))) {
-  t<-tests$treshold[r]
-  n.low<-sum(temp$Steps<t & !is.na(temp$Steps.B),na.rm=T)
-  n.high<-sum(temp$Steps>=t & !is.na(temp$Steps.B),na.rm=T)
-  if (n.low<20 | n.high<20) next # too few days in one group
-  fit.low<-lm(Steps.B~Steps,data=temp,subset=Steps<t)
-  fit.high<-lm(Steps.B~Steps,data=temp,subset=Steps>=t)
-  tests$SSE[r]<-sum(resid(fit.low)^2)+sum(resid(fit.high)^2)
-}
-best<-which.min(tests$SSE)
-t<-tests$treshold[best]
-#
-# Assign class
-#
-index<-which(temp$Steps<t)
-temp$class[index]<-1
-index<-which(temp$Steps>=t)
-temp$class[index]<-2
-#
-###-- Best regression and plot -------------------------------------------------
-#
-fit.low<-lm(Steps.B~Steps,data=temp,subset=Steps<t) # no outdoors
-fit.high<-lm(Steps.B~Steps,data=temp,subset=Steps>=t) # outdoors
-#
-# Plot best regression
-#
-jpeg("Output/steps.jpg",quality=100,res=100,width=800,height=800)
-plot(temp$Steps,temp$Steps.B,main="Regression: steps vs steps.B",
-     xlab="steps",ylab="steps.B",pch=16,col=temp$class)
-Steps.X<-seq(0,tests$treshold[best],1)
-Steps.Y<-predict(fit.low,newdata=data.frame(Steps=Steps.X))
-lines(Steps.X,Steps.Y,col="red",lwd=3)
-Steps.X<-seq(tests$treshold[best],max(Score$Steps,na.rm=T),1)
-Steps.Y<-predict(fit.high,newdata=data.frame(Steps=Steps.X))
-lines(Steps.X,Steps.Y,col="red",lwd=3)
-dev.off()
-#
-###-- Add predicted Steps.B for missing values, to Steps.C ---------------------
-#
-for (i in 1:nrow(Score)) {
-  if (is.na(Score$Steps.C[i])&(!is.na(Score$Steps[i]))) {
-    if (Score$Steps[i]<t) {
-      Score$Steps.C[i]<-predict(fit.low,newdata=Score[i,])
-    } else if (Score$Steps[i]>=t) {
-      Score$Steps.C[i]<-predict(fit.high,newdata=Score[i,])
-    }
-  }
-}
+variables<-c("date","Steps","Steps.B","Steps.C")
+start<-"2023-01-01"
+end<-0
+folder_path<-file.path(current_dir,"Output","Steps") 
+type<-"Steps"
+nd<-10
+Data.plot(Score,nd,variables,start,end,folder_path,type,detrend=F,scaling=F) 
 #
 #---- Total daily mechanical work (joule) -------------------------------------
 #

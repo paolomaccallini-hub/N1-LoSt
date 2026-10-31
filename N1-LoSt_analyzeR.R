@@ -756,6 +756,14 @@ DynaReg(mydata0,exit.vs,covariates,type="multinomial",alpha=0.05,data.select,day
 #
 # Select covariates 
 #
+data.select<-"HbTot"
+covariates<-c("Theta","Alpha","Beta","Gamma",
+              "MRT","Temp","SpO2","Steps.B")
+days<-c(0,1,2,7)
+DynaReg(mydata0,exit.vs="Outer.HbTot",covariates,type="multinomial",alpha=0.05,data.select,days)
+#
+# Select covariates 
+#
 data.select<-"HRV"
 covariates<-c("SDNN","pNN50","rMSSD","LFonHF","Steps.C","TG","Provigil","Mestinon","Etilefrine")
 days<-c(0,1,2,7)

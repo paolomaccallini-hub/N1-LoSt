@@ -90,7 +90,158 @@ HRD<-function(epoch) {
   return(date)
 }
 #
-#---- Equivalent drugs --------------------------------------------------------
+#---- Steps imputation ---------------------------------------------------------
+#
+Steps_impute<-function(Score) {
+  #
+  # Create a directory for Steps plots
+  #
+  folder_path<-file.path(current_dir,"Output","Steps")
+  if (!dir.exists(folder_path)) dir.create(folder_path,recursive=TRUE)
+  #
+  # We run the imputation twice, one without last available data, for validation
+  # against last available data. The other with all available data, for imputation of 
+  # watch steps from cell phone steps. 
+  #
+  for (type in c("validation","imputation")) {
+    #
+    # Steps has a bimodal distribution: one peak for days at home and one for days
+    # with some activity outdoors. We perform two regressions: one for low activity,
+    # one for high. We search for the best model, by scanning the threshold between
+    # low activity and high activity within a range, searching for the value at wich 
+    # the regression model has the lowest sum of squared errors (SSE)
+    #
+    tests<-data.frame(treshold=50:2000,SSE=NA)
+    nr<-nrow(Score) # number of records
+    #
+    # select training data
+    #
+    if (type=="validation") {
+      start<-which(!is.na(Score$Steps.B))[1]
+      end<-nrow(Score)
+      n.days<-end-start
+      nv<-round(0.2*n.days) # validate on last nv record (20%)
+    } else if (type=="imputation") {
+      nv<-0 # no validation, use all records for training
+    }
+    mydata<-data.frame(Steps=Score$Steps[1:(nr-nv)],Steps.B=Score$Steps.B[1:(nr-nv)],class=NA)
+    df<-subset.data.frame(mydata,select=c("Steps","Steps.B"))
+    df<-na.omit(df)
+    N.training<-nrow(df)
+    #
+    # build the regression models
+    #
+    for (r in seq_len(nrow(tests))) {
+      t<-tests$treshold[r]
+      n.low<-sum(mydata$Steps<t & !is.na(mydata$Steps.B),na.rm=T)
+      n.high<-sum(mydata$Steps>=t & !is.na(mydata$Steps.B),na.rm=T)
+      if (n.low<20 | n.high<20) next # too few days in one group
+      fit.low<-lm(Steps.B~Steps,data=mydata,subset=Steps<t)
+      fit.high<-lm(Steps.B~Steps,data=mydata,subset=Steps>=t)
+      tests$SSE[r]<-sum(resid(fit.low)^2)+sum(resid(fit.high)^2)
+    }
+    #
+    # select best threshold
+    #
+    best<-which.min(tests$SSE)
+    t<-tests$treshold[best]
+    #
+    # Assign class (low step count vs high step count)
+    #
+    index<-which(mydata$Steps<t)
+    mydata$class[index]<-1
+    index<-which(mydata$Steps>=t)
+    mydata$class[index]<-2
+    #
+    # Best regression
+    #
+    fit.low<-lm(Steps.B~Steps,data=mydata,subset=Steps<t) # no outdoors
+    fit.high<-lm(Steps.B~Steps,data=mydata,subset=Steps>=t) # outdoors
+    #
+    # Imputation and plotting
+    #
+    if (type=="validation") {
+      #
+      # prepare Steps.C
+      #
+      mydata<-data.frame(Steps=Score$Steps,Steps.B=Score$Steps.B)
+      mydata$Steps.C<-mydata$Steps.B
+      mydata$Steps.C[(nrow(mydata)-nv+1):nrow(mydata)]<-NA
+      #
+      # impute last nv recordings
+      #
+      for (i in 1:nrow(mydata)) {
+        if (is.na(mydata$Steps.C[i])&(!is.na(mydata$Steps[i]))) {
+          if (mydata$Steps[i]<t) {
+            mydata$Steps.C[i]<-round(predict(fit.low,newdata=mydata[i,]))
+          } else if (mydata$Steps[i]>=t) {
+            mydata$Steps.C[i]<-round(predict(fit.high,newdata=mydata[i,]))
+          }
+        }
+      }
+      #
+      # Evaluate and plot relative mean absolute error (RMAE) 
+      # and relative mean error (RME)
+      #
+      mydata<-mydata[(nrow(mydata)-nv+1):nrow(mydata),]
+      mydata<-na.omit(mydata)
+      #
+      file.name<-file.path(folder_path,"regression_validation.jpg")
+      jpeg(file.name,quality=100,res=100,width=800,height=800)
+      layout(mat=matrix(c(1,2,1,3),2,2))
+      err<-mydata$Steps.C-mydata$Steps.B
+      aerr<-abs(err)
+      RME<-mean(err)/mean(mydata$Steps.B) # relative mean error
+      RME<-round(100*RME)
+      RMAE<-mean(aerr)/mean(mydata$Steps.B) # relative mean absolute error
+      RMAE<-round(100*RMAE)
+      plot(mydata$Steps.B,mydata$Steps.C,pch=16,
+           main=paste0("RMAE  = ",RMAE,"%, ","RME  = ",RME,"%, validation = ",
+                       nrow(mydata),", training = ",N.training),
+           xlab="Steps.B (measured)",ylab="Steps.C (imputed)")
+      abline(0,1,col="red",lwd=2) # perfect agreement
+      hist(aerr,10,xlab="steps",main="|Steps.C - Steps.B|")
+      abline(v=mean(aerr),col="red",lwd=2)
+      hist(err,10,xlab="steps",main="Steps.C - Steps.B")
+      abline(v=mean(err),col="red",lwd=2)
+      dev.off()
+    }
+    #
+    if (type=="imputation") {
+      #
+      # Plot best regression
+      #
+      file.name<-file.path(folder_path,"regression_model.jpg")
+      jpeg(file.name,quality=100,res=100,width=800,height=800)
+      plot(mydata$Steps,mydata$Steps.B,
+           main=paste0("Regression: steps vs steps.B, threshold = ",t," days"),
+           xlab="Steps",ylab="Steps.B",pch=16,col=mydata$class)
+      Steps.X<-seq(0,tests$treshold[best],1)
+      Steps.Y<-predict(fit.low,newdata=data.frame(Steps=Steps.X))
+      lines(Steps.X,Steps.Y,col="red",lwd=3)
+      Steps.X<-seq(tests$treshold[best],max(Score$Steps,na.rm=T),1)
+      Steps.Y<-predict(fit.high,newdata=data.frame(Steps=Steps.X))
+      lines(Steps.X,Steps.Y,col="red",lwd=3)
+      dev.off()
+      #
+      # Add predicted Steps.B for missing values, to Steps.C 
+      #
+      mydata$Steps.C<-mydata$Steps.B
+      for (i in 1:nrow(mydata)) {
+        if (is.na(mydata$Steps.C[i])&(!is.na(mydata$Steps[i]))) {
+          if (mydata$Steps[i]<t) {
+            mydata$Steps.C[i]<-round(predict(fit.low,newdata=mydata[i,]))
+          } else if (mydata$Steps[i]>=t) {
+            mydata$Steps.C[i]<-round(predict(fit.high,newdata=mydata[i,]))
+          }
+        }
+      }
+      return(mydata)
+    }
+  }
+}
+#
+#---- Equivalent drugs ---------------------------------------------------------
 #
 # Add a fictitious antibiotic
 #
@@ -1696,7 +1847,7 @@ Plot_Hist<-function(mydata,folder_path) {
 #
 # It plots normalized diagrams
 # 
-Data.plot<-function(mydata,nd,variables,start,end,folder_path,type,detrend=F) {
+Data.plot<-function(mydata,nd,variables,start,end,folder_path,type,detrend=F,scaling=T) {
   #
   # select variables
   #
@@ -1736,7 +1887,9 @@ Data.plot<-function(mydata,nd,variables,start,end,folder_path,type,detrend=F) {
   #
   # scaling (date excluded)
   #
-  mydata[,2:NC]<-scale(mydata[,2:NC])
+  if (scaling) {
+    mydata[,2:NC]<-scale(mydata[,2:NC])
+  }
   #
   # back to HRD
   #
@@ -1760,13 +1913,14 @@ Data.plot<-function(mydata,nd,variables,start,end,folder_path,type,detrend=F) {
   maxY<-max(mydata[,c(2:NC)],na.rm=T)
   j<-2
   plot(as.Date(mydata$date),mydata[,j],type="l",main="",xlab="",ylab="",
-       ylim=c(-3,3),col=j-1,lwd=3,xaxt="n")
+       ylim=c(minY,maxY),col=j-1,lwd=3,xaxt="n")
   for (j in 3:NC) {
     par(new=T)
     plot(as.Date(mydata$date),mydata[,j],type="l",main="",xlab="",ylab="",
-         ylim=c(-3,3),col=j-1,lwd=3,xaxt="n")
+         ylim=c(minY,maxY),col=j-1,lwd=3,xaxt="n")
   }
-  abline(h=seq(round(minY),round(maxY),by=1),lty=2)
+  delta<-round(maxY)-round(minY)
+  abline(h=seq(round(minY),round(maxY),by=round(delta/5)),lty=2)
   abline(v=seq(as.Date(mydata$date)[1],as.Date(mydata$date)[L],by="month"),lty=2)
   axis(1,at=seq(as.Date(mydata$date)[1],as.Date(mydata$date)[L],by="month"),
        labels=format(seq(as.Date(mydata$date)[1],as.Date(mydata$date)[L],by="month"),"%Y-%m-%d"))
