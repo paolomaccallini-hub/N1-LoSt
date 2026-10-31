@@ -216,6 +216,71 @@ Figures~\ref{fig:hrv-time} and~\ref{fig:hrv-freq}.
 
 \subsubsection{Blood pressure and lean test}
 
+Blood pressure and heart rate were measured with an automatic upper-arm oscillometric
+monitor (Omron M6 Comfort) immediately after the HRV recording
+(Section~\ref{sec:hrv}), with the subject still in the supine position, that is after
+at least ten minutes of supine rest. This measurement provided the supine values of
+systolic (Sys) and diastolic (Dia) blood pressure and of heart rate (HR), and was
+available on most days of the study.
+
+On some days, the supine measurement was followed by a NASA lean test, performed
+according to the protocol of the Bateman Horne Center \citep{bhc_nasa_lean}, a
+variant of the passive standing test used by NASA to assess orthostatic intolerance
+\citep{bungo1985}. The subject stood up and leaned against a wall with only the
+shoulder blades in contact with it and the heels about \SI{15}{\centi\metre} from the
+wall, keeping still and without talking, a position that reduces the contribution of
+the leg muscle pump to venous return. Blood pressure and heart rate were then measured
+during standing, and each measurement was assigned to the minute of standing in which
+it was taken ($t = 1, 2, \dots, 10$ min). Unlike the original protocol, which
+prescribes ten minutes of standing with measurements every minute, the test was
+performed occasionally, its duration varied between 4 and 10 minutes, and not all
+time points were recorded in every test; consequently, the later time points are
+available for fewer tests than the earlier ones. Moreover, the supine values were
+obtained from a single measurement rather than from two consecutive consistent
+readings.
+
+For each standing measurement, the changes with respect to the supine values were
+computed as
+\begin{equation}
+  \Delta\mathrm{HR}_t = \mathrm{HR}_t - \mathrm{HR}_0, \qquad
+  \Delta\mathrm{Sys}_t = \mathrm{Sys}_t - \mathrm{Sys}_0, \qquad
+  \Delta\mathrm{Dia}_t = \mathrm{Dia}_t - \mathrm{Dia}_0,
+\end{equation}
+where the subscript $0$ denotes the supine measurement. Pulse pressure was defined as
+$\mathrm{PP} = \mathrm{Sys} - \mathrm{Dia}$ and mean arterial pressure as
+$\mathrm{MAP} = \mathrm{Dia} + (\mathrm{Sys} - \mathrm{Dia})/3$. Each test was then
+summarised by the following daily indices: the maximum and the mean of $\Delta$HR,
+the minimum and the mean of $\Delta$Sys, and the minimum and the mean of PP over the
+available standing measurements.
+
+Stroke volume was not measured directly. An estimate of the stroke volume index (SVI)
+was obtained from HR using the linear relationships between SVI and HR reported for
+healthy controls in the supine position and at the end of a head-up tilt test
+\citep{vancampen2023}:
+\begin{equation}
+  \mathrm{SVI}_0 = \frac{99.18 - \mathrm{HR}_0}{0.9769}, \qquad
+  \mathrm{SVI}_t = \frac{130.7 - \mathrm{HR}_t}{1.968},
+\end{equation}
+with SVI in \si{\milli\litre\per\square\metre} and HR in beats per minute. The cardiac
+power index (CPI) was then estimated as
+$\mathrm{CPI} = K \cdot \mathrm{SVI} \cdot \mathrm{HR} \cdot \mathrm{MAP}$, where
+$K = \num{2.21e-6}$ converts \si{\milli\litre\mmHg\per\minute} into watts, so that
+CPI is expressed in \si{\watt\per\square\metre}. Since these estimates are based on
+models derived from a group of healthy subjects, and the standing model was obtained
+during head-up tilt rather than during active standing, they should be considered as
+indirect, HR- and MAP-driven indices rather than measures of cardiac function.
+
+To describe the average response to standing over the whole study, each variable was
+plotted as a function of the minute of standing, and a second-degree polynomial was
+fitted to all the available measurements pooled together (Figure~\ref{fig:lean-hr}).
+
+\outfig{LeanTest/Heart Rate (bmp).jpeg}{0.95}
+  {Heart rate during the lean test as a function of the minute of standing (0 =
+   supine). Boxes show the distribution over all tests; red dots and numbers are the
+   means; the numbers at the bottom are the numbers of available measurements. The
+   blue line is a second-degree polynomial fit with its 95\% confidence band.}
+  {fig:lean-hr}
+
 \subsubsection{Body composition}
 
 \subsubsection{Indoor and outdoor environment}

@@ -447,6 +447,7 @@ Cardiac.Derived<-function(mydata) {
   #
   mydata$MAP<-mydata$Dia+(mydata$Sys-mydata$Dia)/3 # mean arterial pressure (mmHg)
   mydata$SVI<-(99.18-mydata$HR)/0.9769 # supine stroke volume index healthy (ml/m^2)
+  mydata[["SVI"]][mydata[["SVI"]]<=0]<-NA # negative or zero values are impossible
   mydata$CPI<-mydata$SVI*mydata$HR*mydata$MAP # cardiac power index (ml*mmHg/(min*m^2))
   mydata$CPI<-K*mydata$CPI # cardiac power index (W/m^2)
   mydata$PP<-mydata$Sys-mydata$Dia # delta between max pressure - min pressure (pulse pressure) (mmHg)
@@ -457,6 +458,7 @@ Cardiac.Derived<-function(mydata) {
     #
     mydata[[paste0("MAP",".",i)]]<-mydata[[paste0("Dia",".",i)]]+(mydata[[paste0("Sys",".",i)]]-mydata[[paste0("Dia",".",i)]])/3 
     mydata[[paste0("SVI",".",i)]]<-(130.7-mydata[[paste0("HR",".",i)]])/1.968
+    mydata[[paste0("SVI",".",i)]][mydata[[paste0("SVI",".",i)]]<=0]<-NA # negative or zero values are impossible
     mydata[[paste0("CPI",".",i)]]<-mydata[[paste0("SVI",".",i)]]*mydata[[paste0("HR",".",i)]]*mydata[[paste0("MAP",".",i)]]
     mydata[[paste0("CPI",".",i)]]<-K*mydata[[paste0("CPI",".",i)]] 
     mydata[[paste0("PP",".",i)]]<-mydata[[paste0("Sys",".",i)]]-mydata[[paste0("Dia",".",i)]] 
@@ -557,6 +559,12 @@ LeanTest_func<-function(Score){
   mydata$mean.Delta.Sys<-rowMeans(mydata[paste0("Delta.Sys.",1:10)],na.rm=TRUE)
   mydata$mean.Delta.Sys[is.nan(mydata$mean.Delta.Sys)]<-NA # days without a lean test
   #
+  # Remove PP columns
+  #
+  for (i in 1:10) {
+    mydata[[paste0("PP.",i)]]<-NULL
+  }
+  #
   return(mydata)
 }
 #
@@ -588,10 +596,10 @@ LeanTest_plot<-function(mydata,data.select,deg) {
   means<-sapply(mydata,mean,na.rm=T) # calculate means
   points(x=1:length(means),y=means,pch=19,col="red") # add means to plot
   means<-round(means,0)
-  text(x=1:length(means),y=means+3,labels=means,cex=1,col="red")
+  text(x=(1:length(means))+0.2,y=means,labels=means,cex=1,col="red")
   #
   ns<-sapply(mydata, function(x) sum(!is.na(x))) # calculate sample size
-  text(x=1:length(ns),y=min(mydata,na.rm=T)-5,labels=ns,cex=1)
+  text(x=1:length(ns),y=min(mydata,na.rm=T)-min(mydata,na.rm=T)/7,labels=ns,cex=1)
   #
   # Polynomial regression HR ~ time
   #
@@ -599,14 +607,13 @@ LeanTest_plot<-function(mydata,data.select,deg) {
   long<-long[!is.na(long$HR),]
   fit<-lm(HR~stats::poly(time,deg),data=long) # stats:: avoids pracma::poly
   #
-  new<-data.frame(time=seq(0,max(time),length.out=200))
+  new<-data.frame(time=seq(min(time),max(time),length.out=200))
   pr<-predict(fit,newdata=new,interval="confidence")
   #
-  polygon(c(new$time,rev(new$time))+1,c(pr[,"lwr"],rev(pr[,"upr"])),
+  x<-new$time-min(time)+1 # map minutes to box positions (box are always at positions 1, 2, ...)
+  polygon(c(x,rev(x)),c(pr[,"lwr"],rev(pr[,"upr"])),
           col=adjustcolor("blue",alpha.f=0.2),border=NA)   # 95% confidence band
-  lines(new$time+1,pr[,"fit"],col="blue",lwd=2)            # fitted curve
-  legend("topleft",bty="n",text.col="blue",legend=paste("polynomial degree",deg,
-                                                        ", R2dj =",round(summary(fit)$adj.r.squared,2)))
+  lines(x,pr[,"fit"],col="blue",lwd=2)                     # fitted curve
   #
   dev.off()
 }
