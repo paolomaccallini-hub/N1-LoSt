@@ -2588,7 +2588,12 @@ CoReRaPCA<-function(mydata,exit.v,data.select,nd) {
   folder_path<-file.path(current_dir,folder)  
   try(Regressions(mydata,exit.v,nd,data.select,folder_path))
   #
-  mydata[[exit.v]]<-as.integer(mydata[[exit.v]]>=quantile(mydata[[exit.v]],0.75,na.rm=T))
+  # Convert exit.v into a variable with three levels: 0 (< Q1), 1 (Q1-Q3), 2 (>= Q3)
+  #
+  x<-mydata[[exit.v]]
+  q<-quantile(x,c(0.25,0.75),na.rm=T)
+  if (q[1]==q[2]) stop(exit.v,": first and third quartiles coincide, three levels not possible")
+  mydata$exit.v.o<-findInterval(x,q)
   #
   folder<-"Output/Radar"
   folder_path<-file.path(current_dir,folder)  
