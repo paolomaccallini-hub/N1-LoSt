@@ -1511,10 +1511,11 @@ fNIRS_func<-function(year) {
   #
   temp<-mydata 
   for (j in 1:ncol(mydata)) {
-    if (colnames(mydata)[j]!="date")
-    x<-mydata[,j]
-    out<-boxplot.stats(x)$out
-    temp[,j][x %in% out]<-NA
+    if (colnames(mydata)[j]!="date") {
+      x<-mydata[,j]
+      out<-boxplot.stats(x)$out
+      temp[,j][x %in% out]<-NA  
+    }
   }
   fNIRS_plot(temp,select=2)  
   #
@@ -1641,10 +1642,11 @@ fNIRS_func<-function(year) {
   #
   temp<-mydata 
   for (j in 1:ncol(mydata)) {
-    if (colnames(mydata)[j]!="date")
+    if (colnames(mydata)[j]!="date") {
       x<-mydata[,j]
-    out<-boxplot.stats(x)$out 
-    temp[,j][x %in% out]<-NA
+      out<-boxplot.stats(x)$out 
+      temp[,j][x %in% out]<-NA  
+    }
   }
   fNIRS_plot(temp,select=3)
   #
