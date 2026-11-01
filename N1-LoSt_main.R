@@ -632,4 +632,31 @@ mydata$blood.draw[is.na(mydata$blood.draw)]<-0
 #
 file.name<-"Output/all_daily_data.csv"
 write.table(mydata,file=file.name,quote=F,row.names=F,col.names=T,sep=",")
-
+#
+#---- Numbers for the paper ----------------------------------------------------
+#
+old.locale<-Sys.getlocale("LC_TIME")
+Sys.setlocale("LC_TIME","C") # English month names
+#
+span<-function(v) {
+  d<-mydata$date[!is.na(mydata[[v]])]
+  c(format(as.Date(HRD(min(d))),"%d %B %Y"),
+    format(as.Date(HRD(max(d))),"%d %B %Y"),
+    length(d))
+}
+eeg<-span("Alpha")
+nirs<-span("L.Outer.Hb")
+hrv<-span("SDNN")
+writeLines(c(
+  paste0("\\newcommand{\\eegStart}{",eeg[1],"}"),
+  paste0("\\newcommand{\\eegEnd}{",eeg[2],"}"),
+  paste0("\\newcommand{\\eegDays}{",eeg[3],"}"),
+  paste0("\\newcommand{\\fnirsStart}{",nirs[1],"}"),
+  paste0("\\newcommand{\\fnirsEnd}{",nirs[2],"}"),
+  paste0("\\newcommand{\\fnirsDays}{",nirs[3],"}"),
+  paste0("\\newcommand{\\hrvStart}{",hrv[1],"}"),
+  paste0("\\newcommand{\\hrvEnd}{",hrv[2],"}"),
+  paste0("\\newcommand{\\hrvDays}{",hrv[3],"}")),
+  file.path("Output","paper_numbers.tex"))
+#
+Sys.setlocale("LC_TIME",old.locale) # back to Italian

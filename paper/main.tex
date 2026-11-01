@@ -19,6 +19,7 @@
 % --- Maths, units, tables ----------------------------------------------------
 \usepackage{amsmath,amssymb}
 \usepackage{siunitx}
+\DeclareSIUnit{\molar}{M}
 \usepackage{booktabs}
 \usepackage{tabularx}
 
@@ -65,7 +66,8 @@
     {\includegraphics[width=#2\linewidth]{\outdir#1}}%
     {\fbox{\parbox[c][3cm][c]{0.9\linewidth}{\centering\scriptsize Missing:\\
       \texttt{\detokenize{#1}}}}}}
-
+% Numbers computed by the pipeline (dates, counts)
+\input{\outdir paper_numbers.tex}
 % =============================================================================
 % Title
 % =============================================================================
@@ -132,7 +134,7 @@ and comparing the values predicted for the remaining 20\% with the measured ones
 The relative mean absolute error, $\sum|\hat{y}_i - y_i| / \sum y_i$, and the relative mean error
 (bias), $\sum(\hat{y}_i - y_i) / \sum y_i$, are indicated on the plot. Most days were slightly overestimated,
 while the most active days, and outdoor activity without the phone, were underestimated. The time series 
-of \texttt{Steps}, \texttt{Steps.B}, and \texttt{Steps.C} are shown in Figure~\ref{fig:steps}.
+of \texttt{Steps}, \texttt{Steps.B}, and \texttt{Steps.C} are shown in Figure~\ref{fig:steps-time-series}.
 
 \begin{figure}[htbp]
   \centering
@@ -153,7 +155,7 @@ of \texttt{Steps}, \texttt{Steps.B}, and \texttt{Steps.C} are shown in Figure~\r
   \centering
   \includegraphics[width=\textwidth]{../Output/Steps/normplot_10_Steps.jpeg}
   \caption{Daily steps averaged over non-overlapping 10-day blocks.}
-  \label{fig:steps}
+  \label{fig:steps-time-series}
 \end{figure}
 
 \subsubsection{Heart rate variability}
@@ -162,13 +164,14 @@ Heart rate variability (HRV) was assessed from five-minute recordings of RR inte
 following the protocol and the analysis pipeline described in detail in a previous
 work \citep{maccallini2024hrv}, to which the reader is referred for an overview on
 HRV, the definition of the indices, their physiological interpretation, and an introduction to
-spectral analysis by Discrete Fourier Transform. Recordings started in July 2022 and 
-were performed once a day, in the morning, in the supine position, after five minutes of rest in the same position.
+spectral analysis by Discrete Fourier Transform. Recordings started on \hrvStart{} and, 
+up to \hrvEnd{}, were available for \hrvDays{} days, and were performed once a day, 
+simultaneously with the EEG and fNIRS recordings. They were performed once a day, in the morning, in the supine position, after five minutes of rest in the same position.
 RR intervals were acquired for about five minutes with a Polar H9 sensor mounted on a
 moistened chest belt, a type of device whose agreement with the electrocardiogram has
 been documented \citep{bourdillon2017}. The sensor was connected via Bluetooth to a
 smartphone running the Elite HRV application, and the RR series were exported in text
-format, one file per recording.
+format, one file per recording. 
 
 The series were analysed with the R package RHRV \citep{garcia2017rhrv}. For each
 recording, the instantaneous non-interpolated heart rate was computed from the RR
@@ -286,7 +289,156 @@ fitted to all the available measurements pooled together (Figure~\ref{fig:lean-h
 
 \subsubsection{Indoor and outdoor environment}
 
-\subsubsection{EEG and fNIRS}
+\subsubsection{Electroencephalography}\label{sec:eeg}
+
+Resting-state electroencephalography (EEG) was recorded with a consumer-grade wearable
+headband (Muse S Athena, Interaxon), a type of device whose use for research has been
+validated against laboratory systems \citep{krigolson2017}. The headband has four dry
+electrodes, two frontal (AF7, AF8) and two temporo-parietal, behind the ears (TP9,
+TP10), with the reference at Fpz. Recordings started on \eegStart{} and, up to \eegEnd{}, 
+were available for \eegDays{} days, and were collected once a day, 
+simultaneously with the EEG and HRV recordings, at rest. The measurements were performed in the same room, 
+with the subject laying supine on a bed, in a quiet environment, with the lights 
+off and the eyes closed, after at least five minutes of rest in the same position. 
+ The raw signals of the four channels were acquired with the Mind Monitor application and exported in text format,
+one file per recording \citep{clutterbuck_mindmonitor}. The same files also contain the
+optical channels used for fNIRS (Section~\ref{sec:fnirs}). Only the first recording of
+each day started before 17:00 was retained, and the first and last \SI{10}{\second} of
+each recording were removed. The sampling frequency $F_s$ was estimated for each
+recording from the number of samples and their time stamps.
+
+Mind Monitor marks the samples at which it detects eye blinks and jaw clenches, the
+main sources of artefacts in frontal and temporal recordings. For each of these
+events, the samples of all four channels within \SI{0.5}{\second} of the event were
+removed. Each recording was then divided into consecutive, non-overlapping windows of
+\SI{10}{\second}, giving a frequency resolution of \SI{0.1}{\hertz}. Windows that
+contained removed samples were discarded.
+
+For each window and channel, the amplitude spectrum was computed by fast Fourier
+transform with the R package eegkit \citep{helwig_eegkit}, and the power spectral
+density was taken as the square of the amplitude. The power in each of the classical
+bands, delta (\SIrange{0.5}{4}{\hertz}), theta (\SIrange{4}{8}{\hertz}), alpha
+(\SIrange{8}{13}{\hertz}), beta (\SIrange{13}{30}{\hertz}), and gamma
+(\SIrange{30}{45}{\hertz}), was obtained by integrating the spectrum over the band with
+the trapezoidal rule. It was then divided by the total power between 0.5 and
+\SI{45}{\hertz}, giving the relative power of the band:
+\begin{equation}
+  P^{\mathrm{rel}}_{c,b} = \frac{\int_{b} |X_c(f)|^2\,df}{\int_{0.5}^{45} |X_c(f)|^2\,df},
+\end{equation}
+where $X_c(f)$ is the amplitude spectrum of channel $c$ and $b$ is the band. Relative
+powers were preferred to absolute powers because they are independent of the overall
+amplitude of the signal, which, for dry electrodes, depends on the contact between the
+electrodes and the skin and may change from one session to another. For each channel
+and band, the relative powers were averaged over the windows of the recording, giving
+one value per day.
+
+Besides the 20 channel--band combinations, three indices were computed for each band by
+summing the relative powers over channels: over all four channels (e.g.\
+\texttt{Alpha}), over the left channels AF7 and TP9 (\texttt{Alpha\_L}), and over the
+right channels AF8 and TP10 (\texttt{Alpha\_R}). 
+
+\subsubsection{Functional near-infrared spectroscopy}\label{sec:fnirs}
+
+Changes in the concentration of oxygenated (HbO$_2$) and deoxygenated (Hb) haemoglobin
+in the frontal region were estimated by continuous-wave functional near-infrared
+spectroscopy (fNIRS), using the optical sensors of a consumer-grade wearable headband
+(Muse S Athena, Interaxon), the same device used for the EEG recordings. The theory
+behind the method and its adaptation to this device are described in detail in a
+previous work \citep{maccallini2026fnirs}, to which the reader is referred for the
+derivation of the equations reported below. Recordings started on \fnirsStart{} and, 
+up to \fnirsEnd{}, were available for \fnirsDays{} days, and were collected once a day, 
+simultaneously with the EEG and HRV recordings, at rest. The measurements were performed in the same room, 
+with the subject laying supine on a bed, in a quiet environment, with the lights 
+off and the eyes closed, after at least five minutes of rest in the same position. 
+
+The headband has a single optical source at the centre of the forehead, emitting at
+\SIlist{660;730;850}{\nano\metre}, and two receivers on each side: an inner receiver at
+about \SI{1}{\centi\metre} and an outer receiver at about \SI{3}{\centi\metre} from the
+source. Each receiver also records ambient light, with the source switched off. The raw
+intensities were acquired with the Mind Monitor application and exported in text
+format, one file per recording, with the 16 optical channels assigned as in
+Table~\ref{tab:optics} \citep{clutterbuck_mindmonitor}. Only the first recording of each
+day started before 17:00 was retained, recordings without full optical data were discarded,
+and the first and last \SI{10}{\second} of each recording were removed. Each channel
+was then summarised by its mean intensity over the recording, giving one value per day
+for each receiver and wavelength.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Optical channels of the headband, as numbered in the files exported by Mind
+    Monitor \citep{clutterbuck_mindmonitor}, and source--receiver distance $L$.}
+  \label{tab:optics}
+  \begin{tabular}{lccccc}
+    \toprule
+    Receiver & \SI{730}{\nano\metre} & \SI{850}{\nano\metre} & \SI{660}{\nano\metre} & Ambient & $L$ (\si{\centi\metre}) \\
+    \midrule
+    Left outer  & 1 & 3 &  9 & 11 & 3 \\
+    Right outer & 2 & 4 & 10 & 12 & 3 \\
+    Left inner  & 5 & 7 & 13 & 15 & 1 \\
+    Right inner & 6 & 8 & 14 & 16 & 1 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Haemoglobin concentrations were derived from the \SI{730}{\nano\metre} and
+\SI{850}{\nano\metre} channels using the modified Beer--Lambert law
+\citep{delpy1988}. Since the intensity emitted by the source is unknown, only changes
+in attenuation with respect to a reference can be measured. As a reference, the mean
+of the daily intensities over the whole study, $\bar{I}_{r,\lambda}$, was used for each
+receiver $r$ and wavelength $\lambda$, under the assumption that all the recordings were
+performed in the same resting conditions. The change in attenuation on day $d$ is then
+\begin{equation}
+  \Delta A_{r,\lambda}(d) = \ln\frac{\bar{I}_{r,\lambda}}{I_{r,\lambda}(d)} .
+\end{equation}
+The optical path was taken as $x_{r,\lambda} = L_r \cdot \mathrm{DPF}(\lambda, a)$, where
+$L_r$ is the source--receiver distance and DPF is the differential pathlength factor of
+the frontal human head, which depends on the wavelength $\lambda$ (in nm) and on the age
+$a$ (in years) of the subject \citep{scholkmann2013}:
+\begin{equation}
+  \mathrm{DPF}(\lambda, a) = 223.3 + 0.05624\,a^{0.8493} - 5.723\cdot10^{-7}\lambda^3
+  + 0.001245\,\lambda^2 - 0.9025\,\lambda .
+\end{equation}
+The age was computed as the calendar year of the recording minus the year of birth.
+This equation was derived for wavelengths between 690 and \SI{832}{\nano\metre}
+\citep{scholkmann2013}, so its value at \SI{850}{\nano\metre} is a small extrapolation.
+For each receiver and day, the changes in concentration were obtained by solving the
+linear system
+\begin{equation}
+  \begin{bmatrix}
+    \varepsilon_{\mathrm{Hb}}(\lambda_1) & \varepsilon_{\mathrm{HbO_2}}(\lambda_1) \\
+    \varepsilon_{\mathrm{Hb}}(\lambda_2) & \varepsilon_{\mathrm{HbO_2}}(\lambda_2)
+  \end{bmatrix}
+  \begin{bmatrix} \Delta[\mathrm{Hb}] \\ \Delta[\mathrm{HbO_2}] \end{bmatrix}
+  =
+  \begin{bmatrix}
+    \Delta A_{r,\lambda_1} / x_{r,\lambda_1} \\
+    \Delta A_{r,\lambda_2} / x_{r,\lambda_2}
+  \end{bmatrix},
+  \qquad \lambda_1 = \SI{730}{\nano\metre},\ \lambda_2 = \SI{850}{\nano\metre},
+\end{equation}
+where $\varepsilon_{\mathrm{Hb}}$ and $\varepsilon_{\mathrm{HbO_2}}$ are the molar
+extinction coefficients tabulated by Prahl \citep{prahl_hb}: 1102.2 and 390 at
+\SI{730}{\nano\metre}, and 691.32 and 1058 at \SI{850}{\nano\metre}, in
+\si{\per\centi\metre\per\molar}. These values follow the decadic convention of optical
+density and were multiplied by $\ln 10$ to be consistent with the natural logarithm used
+for the attenuation. With paths in centimetres, concentrations are obtained in
+\si{\molar}.
+
+For each receiver, two derived indices were computed: the change in total haemoglobin,
+$\Delta[\mathrm{HbTot}] = \Delta[\mathrm{HbO_2}] + \Delta[\mathrm{Hb}]$, a proxy for
+local blood volume, and the difference
+$\Delta[\mathrm{HbDiff}] = \Delta[\mathrm{HbO_2}] - \Delta[\mathrm{Hb}]$, an index of
+oxygenation, whose positive values indicate that the increase in oxygenated blood is
+greater than the increase in deoxygenated blood, with respect to the reference. Therefore,
+$\Delta[\mathrm{HbDiff}]$ helps to dentify days on which the increase in concentration of
+frontal oxygenated blood is not only due to an increase in blood volume.
+
+Frontal indices were obtained by summing the values of the left and right receivers,
+separately for the inner and the outer receivers. Because the light reaching the inner
+receivers travels mostly through the scalp and skull, the outer channels are expected
+to be the more sensitive to cortical haemodynamics. The \SI{660}{\nano\metre} and
+ambient channels were not used for the concentrations, but their daily means were
+retained as additional variables.
 
 \subsubsection{Blood tests}
 
