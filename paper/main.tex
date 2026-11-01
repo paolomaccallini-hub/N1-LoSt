@@ -285,9 +285,31 @@ fitted to all the available measurements pooled together (Figure~\ref{fig:lean-h
    blue line is a second-degree polynomial fit with its 95\% confidence band.}
   {fig:lean-hr}
 
-\subsubsection{Body composition}
+\subsubsection{Body composition}\label{sec:bia}
 
-\subsubsection{Indoor and outdoor environment}
+Body weight and body composition were measured with a bioelectrical impedance analysis
+(BIA) scale (Healtheep FG263LB) connected via Bluetooth to a smartphone running the
+Fitdays application. Measurements were performed in the morning, after voiding, with the subject
+barefoot and wearing only light clothing. The scale uses a four-electrode, foot-to-foot
+configuration, with two electrodes on the front and two on the back of each foot. The
+scale measures the impedance of the body to a weak alternating current at 50 kHz, and
+estimates the body compartments from the impedance by means of proprietary equations
+that also include weight, height, sex, and age \citep{kyle2004}. The scale measures weight
+ directly, while all the other quantities are derived from the impedance by the proprietary equations of
+the manufacturer, which are not disclosed. Their absolute values should therefore be
+interpreted with caution, and in this study they were used only to follow changes over
+time in the same subject. Measurements were available from \biaStart{} to \biaEnd{},
+for a total of \biaDays{} days. 
+
+The following variables, exported by the application, were considered: weight, body
+mass index (BMI), body fat, subcutaneous fat, body water, skeletal muscle, and protein
+(as percentages of body weight); muscle mass and bone mass (in kg); the visceral fat
+index; and the basal metabolic rate (BMR, in kcal/day). The masses of skeletal muscle,
+subcutaneous fat, and body fat were obtained by multiplying the corresponding
+percentages by the weight. 
+
+Since the scale was not used every day, the series were completed by imputation. The
+days between two measurements were filled by linear interpolation. 
 
 \subsubsection{Electroencephalography}\label{sec:eeg}
 

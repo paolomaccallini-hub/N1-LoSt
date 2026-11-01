@@ -282,8 +282,6 @@ for (i in 1:nrow(Score)) {
 # Estimate missing values of watch steps (Steps.B) from phone steps (Steps) and 
 # use the prediction to build a complete time series Steps.C
 #
-###-- Missing values and interpolation -----------------------------------------
-#
 # Count missing values to Steps
 #
 first.step<-which(!is.na(Score$Steps))[1]
@@ -417,6 +415,7 @@ myHRVdata<-myHRVdata[!duplicated(myHRVdata$date),]
 #---- Data from BIA scale ------------------------------------------------------
 #
 BIA<-Fitdays()
+BIA.raw<-BIA # measured values only, before imputation (for the paper)
 #
 # Imputation of data from BIA scale
 #
@@ -428,8 +427,7 @@ BIA<-merge.data.frame(temp,BIA,by.y="date",all.x=T)
 # add missing days with splines and means
 #
 for (j in 2:ncol(BIA)) {
-  BIA[,j]<-approx(seq_along(BIA[,j]),BIA[,j],xout=seq_along(BIA[,j]))$y
-  BIA[,j]<-Spline.Me(BIA[,j])
+  BIA[,j]<-zoo::na.approx(BIA[,j],maxgap=60,na.rm=FALSE)
 }
 #
 #---- Data from ShapeGanic App -------------------------------------------------
@@ -638,15 +636,16 @@ write.table(mydata,file=file.name,quote=F,row.names=F,col.names=T,sep=",")
 old.locale<-Sys.getlocale("LC_TIME")
 Sys.setlocale("LC_TIME","C") # English month names
 #
-span<-function(v) {
+span<-function(df,v) {
   d<-mydata$date[!is.na(mydata[[v]])]
   c(format(as.Date(HRD(min(d))),"%d %B %Y"),
     format(as.Date(HRD(max(d))),"%d %B %Y"),
     length(d))
 }
-eeg<-span("Alpha")
-nirs<-span("L.Outer.Hb")
-hrv<-span("SDNN")
+eeg<-span(mydata,"Alpha")
+nirs<-span(mydata,"L.Outer.Hb")
+hrv<-span(mydata,"SDNN")
+bia<-span(BIA.row,"Weight")
 writeLines(c(
   paste0("\\newcommand{\\eegStart}{",eeg[1],"}"),
   paste0("\\newcommand{\\eegEnd}{",eeg[2],"}"),
@@ -656,7 +655,10 @@ writeLines(c(
   paste0("\\newcommand{\\fnirsDays}{",nirs[3],"}"),
   paste0("\\newcommand{\\hrvStart}{",hrv[1],"}"),
   paste0("\\newcommand{\\hrvEnd}{",hrv[2],"}"),
-  paste0("\\newcommand{\\hrvDays}{",hrv[3],"}")),
+  paste0("\\newcommand{\\hrvDays}{",hrv[3],"}"),
+  paste0("\\newcommand{\\biaStart}{",bia[1],"}"),
+  paste0("\\newcommand{\\biaEnd}{",bia[2],"}"),
+  paste0("\\newcommand{\\biaDays}{",bia[3],"}")),
   file.path("Output","paper_numbers.tex"))
 #
 Sys.setlocale("LC_TIME",old.locale) # back to Italian

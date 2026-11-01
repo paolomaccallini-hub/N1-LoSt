@@ -2603,7 +2603,8 @@ CoReRaPCA<-function(mydata,exit.v,data.select,nd) {
 #---- Dynamic regressions ------------------------------------------------------
 #
 DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
-                  data.select=NA,days=days<-c(0,1,2,3,4,8,16,32)) {
+                  data.select=NA,days=days<-c(0,1,2,3,4,8,16,32),
+                  family=c("binomial","gaussian")) {
   #
   # Create output folders, if not present
   #
@@ -2717,7 +2718,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
     #
     # Regressions 
     #
-    for (fam in c("binomial","gaussian")) {
+    for (fam in family) {
       #
       # Regressions
       #
@@ -2771,7 +2772,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
                 myresults[j,(index+1)]<-"NE"
                 myresults.all[j,(index+1)]<-"NE"
               }
-            }
+            } 
             if (is.na(p.mat[j,(index+1)])) {
               cf<-summary(model)$coefficients
               if (nrow(cf)>1) {
