@@ -336,7 +336,7 @@ Score<-WORK(Score)
 Score$Work<-Score$Work.a+Score$Work.an 
 #
 #
-#---- Derive cardiac power index (CPI) -----------------------------------------
+#---- Derive cardiac power (CP) -----------------------------------------
 #
 Score<-Cardiac.Derived(Score)
 #

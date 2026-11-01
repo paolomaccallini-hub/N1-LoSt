@@ -435,33 +435,25 @@ Hydroxycobalamin.Tot<-function(mydata) {
 #
 # It calculates some derived cardiac parameters 
 # 
-# Linear models for SVI comes from MC Van Campen 2023. It refers to 52 HCs in
-# supine position and end tilt. I also tried the model for 362 ME patients in supine position
-# and it gives worse regressions with my symptoms, so I removed it from the subroutine.
-#
 Cardiac.Derived<-function(mydata) {
-  #
-  K<-2.21*1e-06 # conversion from mmHg*ml/min to watt
   #
   # Supine MAP, CPI, PP
   #
-  mydata$MAP<-mydata$Dia+(mydata$Sys-mydata$Dia)/3 # mean arterial pressure (mmHg)
-  mydata$SVI<-(99.18-mydata$HR)/0.9769 # supine stroke volume index healthy (ml/m^2)
-  mydata[["SVI"]][mydata[["SVI"]]<=0]<-NA # negative or zero values are impossible
-  mydata$CPI<-mydata$SVI*mydata$HR*mydata$MAP # cardiac power index (ml*mmHg/(min*m^2))
-  mydata$CPI<-K*mydata$CPI # cardiac power index (W/m^2)
   mydata$PP<-mydata$Sys-mydata$Dia # delta between max pressure - min pressure (pulse pressure) (mmHg)
+  mydata$MAP<-mydata$Dia+(mydata$Sys-mydata$Dia)/3 # mean arterial pressure (mmHg)
+  mydata$SV<-mydata$PP/(mydata$Dia+mydata$Sys) # stroke volume, Liljestrand and Zander, 1928 (https://pmc.ncbi.nlm.nih.gov/articles/PMC5317099/)
+  mydata$COut<-mydata$SV*mydata$HR # cardiac output
+  mydata$CP<-mydata$COut*mydata$MAP # cardiac power
   #
   # Standing MAP, CPI, PP
   #
   for (i in 1:10) {
     #
+    mydata[[paste0("PP",".",i)]]<-mydata[[paste0("Sys",".",i)]]-mydata[[paste0("Dia",".",i)]]
     mydata[[paste0("MAP",".",i)]]<-mydata[[paste0("Dia",".",i)]]+(mydata[[paste0("Sys",".",i)]]-mydata[[paste0("Dia",".",i)]])/3 
-    mydata[[paste0("SVI",".",i)]]<-(130.7-mydata[[paste0("HR",".",i)]])/1.968
-    mydata[[paste0("SVI",".",i)]][mydata[[paste0("SVI",".",i)]]<=0]<-NA # negative or zero values are impossible
-    mydata[[paste0("CPI",".",i)]]<-mydata[[paste0("SVI",".",i)]]*mydata[[paste0("HR",".",i)]]*mydata[[paste0("MAP",".",i)]]
-    mydata[[paste0("CPI",".",i)]]<-K*mydata[[paste0("CPI",".",i)]] 
-    mydata[[paste0("PP",".",i)]]<-mydata[[paste0("Sys",".",i)]]-mydata[[paste0("Dia",".",i)]] 
+    mydata[[paste0("SV",".",i)]]<-mydata[[paste0("PP",".",i)]]/(mydata[[paste0("Dia",".",i)]]+mydata[[paste0("Sys",".",i)]])
+    mydata[[paste0("COut",".",i)]]<-mydata[[paste0("SV",".",i)]]*mydata[[paste0("HR",".",i)]]
+    mydata[[paste0("CP",".",i)]]<-mydata[[paste0("COut",".",i)]]*mydata[[paste0("MAP",".",i)]]
     #
   }
   return(mydata)

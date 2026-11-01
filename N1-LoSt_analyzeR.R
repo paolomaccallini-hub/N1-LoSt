@@ -491,7 +491,8 @@ LeanTest_plot(mydata,data.select,deg)
 #
 # Plotting: Sys
 #
-variables<-c("Sys","Sys.1","Sys.2","Sys.3","Sys.4","Sys.5","Sys.6","Sys.7","Sys.8","Sys.9","Sys.10")
+variables<-c("Sys","Sys.1","Sys.2","Sys.3","Sys.4","Sys.5","Sys.6","Sys.7",
+             "Sys.8","Sys.9","Sys.10")
 mydata<-subset.data.frame(mydata0,select=variables)
 data.select="Systolic (mmHg)"
 deg<-2
@@ -508,7 +509,8 @@ LeanTest_plot(mydata,data.select,deg)
 #
 # Plotting: Dia
 #
-variables<-c("Dia","Dia.1","Dia.2","Dia.3","Dia.4","Dia.5","Dia.6","Dia.7","Dia.8","Dia.9","Dia.10")
+variables<-c("Dia","Dia.1","Dia.2","Dia.3","Dia.4","Dia.5","Dia.6","Dia.7",
+             "Dia.8","Dia.9","Dia.10")
 mydata<-subset.data.frame(mydata0,select=variables)
 data.select="Diastolic (mmHg)"
 deg<-2
@@ -523,37 +525,47 @@ data.select="Delta Diastolic (mmHg)"
 deg<-2
 LeanTest_plot(mydata,data.select,deg)   
 #
+# Plotting: PP
+#
+variables<-c("PP","PP.1","PP.2","PP.3","PP.4","PP.5","PP.6","PP.7","PP.8","PP.9","PP.10")
+mydata<-subset.data.frame(mydata0,select=variables)
+data.select="Pulse Pressure (Sys - Dia)"
+deg<-2
+LeanTest_plot(mydata,data.select,deg)  
+#
 # Plotting: MAP
 #
-variables<-c("MAP","MAP.1","MAP.2","MAP.3","MAP.4","MAP.5","MAP.6","MAP.7","MAP.8","MAP.9","MAP.10")
+variables<-c("MAP","MAP.1","MAP.2","MAP.3","MAP.4","MAP.5","MAP.6","MAP.7",
+             "MAP.8","MAP.9","MAP.10")
 mydata<-subset.data.frame(mydata0,select=variables)
 data.select="Mean Arterial Pressure (mmHg)"
 deg<-2
 LeanTest_plot(mydata,data.select,deg)     
 #
-# Plotting: SVI
+# Plotting: SV
 #
-variables<-c("SVI","SVI.1","SVI.2","SVI.3","SVI.4","SVI.5","SVI.6","SVI.7","SVI.8","SVI.9","SVI.10")
+variables<-c("SV","SV.1","SV.2","SV.3","SV.4","SV.5","SV.6","SV.7","SV.8",
+             "SV.9","SV.10")
 mydata<-subset.data.frame(mydata0,select=variables)
-data.select="Stroke Volume Index (ml on m2)"
+data.select="Stroke Volume"
 deg<-2
 LeanTest_plot(mydata,data.select,deg)     
 #
-# Plotting: CPI
+# Plotting: CO
 #
-variables<-c("CPI","CPI.1","CPI.2","CPI.3","CPI.4","CPI.5","CPI.6","CPI.7","CPI.8","CPI.9","CPI.10")
+variables<-c("COut","COut.1","COut.2","COut.3","COut.4","COut.5","COut.6","COut.7","COut.8","COut.9","COut.10")
 mydata<-subset.data.frame(mydata0,select=variables)
-data.select="Cardiac Power Index"
+data.select="Cardiac Output"
+deg<-2
+LeanTest_plot(mydata,data.select,deg)   
+#
+# Plotting: CP
+#
+variables<-c("CP","CP.1","CP.2","CP.3","CP.4","CP.5","CP.6","CP.7","CP.8","CP.9","CP.10")
+mydata<-subset.data.frame(mydata0,select=variables)
+data.select="Cardiac Power"
 deg<-2
 LeanTest_plot(mydata,data.select,deg)     
-#
-# Plotting: PP
-#
-variables<-c("PP","PP.1","PP.2","PP.3","PP.4","PP.5","PP.6","PP.7","PP.8","PP.9","PP.10")
-mydata<-subset.data.frame(mydata0,select=variables)
-data.select="Sys - Dia (mmHg)"
-deg<-2
-LeanTest_plot(mydata,data.select,deg) 
 #
 # Time series
 #
