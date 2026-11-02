@@ -726,45 +726,74 @@ DynaReg(mydata0,exit.vs,covariates,type,alpha)
 file.name<-"Output/all_daily_data.csv"
 mydata0<-read.csv(file.name,header=T,sep=",")
 #
-# Select exit variable
+# Select model 
 #
-exit.vs<-c("Score_m","Score_T","max.Delta.HR") 
+evs<-c("Score_m")
+dsel<-"Climate_BG"
+cv<-c("MRT","AH","TAmean","Pressure","Light","Clouds","Precipitation","AQI","Steps.C")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,8,16,32)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
 #
-# Select covariates 
+# Select model
 #
-data.select<-"Climate_BG"
-covariates<-c("TG","AH","TAmean","Pressure","Light","Clouds","Precipitation","AQI")
-DynaReg(mydata0,exit.vs,covariates,type="multinomial",alpha=0.05,data.select)
+evs<-c("Score_m")
+dsel<-"Brain"
+cv<-c("Theta","Alpha","Beta","Gamma",
+      "Outer.Hb02","Outer.HbTot",
+      "Inner.Hb02","Inner.HbTot",
+      "MRT","Temp","SpO2","Steps.C")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,8)
+fm<-c("gaussian","binomial")
+nl<-14
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,nlag=nl)
 #
-# Select covariates 
+# Select model
 #
-data.select<-"Brain Left"
-covariates<-c("Delta_L","Theta_L","Alpha_L","Beta_L",
-              "L.Outer.Hb02","L.Outer.HbTot",
-              "L.Inner.Hb02","L.Inner.HbTot",
-              "MRT","Temp","SpO2","Steps.B")
-days<-c(0,1,2,7)
-DynaReg(mydata0,exit.vs,covariates,type="multinomial",alpha=0.05,data.select,days)
+evs<-c("Score_m")
+dsel<-"Drugs"
+cv<-c("Provigil","Bupropion",
+      "Aniracetam","D_serine","Sarcosine","Destrometorfano",
+      "Beta.Lactam",
+      "Tachipirine","Ibuprofene",
+      "Corticosteroid","Pregnenolone","DHEA","Melatonin","T4","T3",
+      "Ketotifen","Desloratadina",
+      "Pioglitazone","Deursil",
+      "Mestinon","Etilefrine","Acetazolamide",
+      "Nimodipine","Compression.suit",
+      "Creatine","ALCar",
+      "VitE","VitD3","B12.Tot",
+      "Thiamin","Riboflavin","Niacin","VitB6","Folic.acid",          
+      "Folinic.acid","Biotin",   
+      "Pantothenic.acid","Choline.bitartrate","Myo.Inositol",  
+      "DHA","EPA")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,8,32)
+fm<-c("gaussian","binomial")
+nl<-14
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,nlag=nl)
 #
-# Select covariates 
+# Select model
 #
-data.select<-"Brain Right"
-covariates<-c("Delta_R","Theta_R","Alpha_R","Beta_R",
-              "R.Outer.Hb02","R.Outer.HbTot",
-              "R.Inner.Hb02","R.Inner.HbTot",
-              "MRT","Temp","SpO2","Steps.B")
-days<-c(0,1,2,7)
-DynaReg(mydata0,exit.vs,covariates,type="multinomial",alpha=0.05,data.select,days)
-#
-# Select covariates 
-#
-data.select<-"Brain"
-covariates<-c("Theta","Alpha","Beta","Gamma",
-              "Outer.Hb02","Outer.HbTot",
-              "Inner.Hb02","Inner.HbTot",
-              "MRT","Temp","SpO2","Steps.B")
-days<-c(0,1,2,7)
-DynaReg(mydata0,exit.vs,covariates,type="multinomial",alpha=0.05,data.select,days)
+evs<-c("Score_m")
+dsel<-"Exercise"
+cv<-c("Steps.C","WL.bin")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,3)
+fm<-c("gaussian","binomial")
+nl<-14
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,nlag=nl)
+
+
+
+
+
 #
 # Select covariates 
 #
@@ -780,33 +809,8 @@ data.select<-"HRV"
 covariates<-c("SDNN","pNN50","rMSSD","LFonHF","Steps.C","TG","Provigil","Mestinon","Etilefrine")
 days<-c(0,1,2,7)
 DynaReg(mydata0,exit.vs,covariates,type="multinomial",alpha=0.05,data.select,days)
-#
-# Select covariates 
-#
-data.select<-"Drugs"
-covariates<-c("Provigil","Bupropion",
-              "Aniracetam","D_serine","Sarcosine","Destrometorfano",
-              "Beta.Lactam",
-              "Tachipirine","Ibuprofene",
-              "Corticosteroid","Pregnenolone","DHEA","Melatonin","T4","T3",
-              "Ketotifen","Desloratadina",
-              "Pioglitazone","Deursil",
-              "Mestinon","Etilefrine","Acetazolamide",
-              "Nimodipine","Compression.suit",
-              "Creatine","ALCar",
-              "VitE","VitD3","B12.Tot",
-              "Thiamin","Riboflavin","Niacin","VitB6","Folic.acid",          
-              "Folinic.acid","Biotin",   
-              "Pantothenic.acid","Choline.bitartrate","Myo.Inositol",  
-              "DHA","EPA")
-DynaReg(mydata0,exit.vs,covariates,type="multinomial",alpha=0.05,data.select)
-#
-# Select covariates 
-#
-data.select<-"Exercise"
-covariates<-c("Steps.C","WL.bin","Bike","TA.out","ST")
-days<-c(0,1,2,4,7)
-DynaReg(mydata0,exit.vs,covariates,type="multinomial",alpha=0.05,data.select,days)
+
+
 #
 # Select covariates 
 #

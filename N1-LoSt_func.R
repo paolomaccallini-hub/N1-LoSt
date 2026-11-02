@@ -2607,8 +2607,16 @@ CoReRaPCA<-function(mydata,exit.v,data.select,nd) {
 #
 #---- Dynamic regressions ------------------------------------------------------
 #
+# exit.vs = one or more exit variables
+# covariates = all the covariates (interactions with * are admitted)
+# type = either "marginal" or "multinomial"
+# alpha = cut off for significance
+# data.selec = a string that will be used to build the dedicated folders
+# days = a vector of days used for regression against weighted covariates (see methods)
+# family = either "binomial" or "gaussian" or both (as a vector)
+#
 DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
-                  data.select=NA,days=days<-c(0,1,2,3,4,8,16,32),
+                  data.select=NA,days=c(0,1,8,16,32),
                   family=c("binomial","gaussian")) {
   #
   # Create output folders, if not present
@@ -2635,6 +2643,27 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
     if(!dir.exists(folder_path)) {
       dir.create(folder_path) 
     } 
+  }
+  #
+  # Linear degrading effect of covariates
+  #
+  MAXnd<-32 # we assume that the effects of covariates degrades linearly and is zero ta day MAXnd 
+  days<-days[days<=MAXnd]
+  #
+  # Are there any interactions among covariates?
+  #
+  for (cv in covariates[grepl("*",covariates,fixed=TRUE)]) {
+    vars<-trimws(strsplit(cv,"*",fixed=TRUE)[[1]])
+    if (!all(vars %in% names(mydata0))) stop("unknown variable in ",cv)
+    name<-paste(vars,collapse="_x_")
+    x<-rep(1,nrow(mydata0))
+    for (v in vars) {
+      z<-mydata0[[v]]
+      x<-x*z
+    }
+    mydata0[[name]]<-x
+    covariates[covariates==cv]<-name
+    covariates<-unique(c(covariates,vars)) # main effects
   }
   #
   # Work on covariates
@@ -2680,12 +2709,6 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
     mydata.cov[,j]<-as.numeric(scale(mydata.cov[,j]))
   }
   #
-  # Correction for multiple comparisons (for marginal regression only)
-  #
-  if (type=="marginal") {
-#    alpha<-alpha/ncol(mydata.cov)  
-  }
-  #
   # Select exit variable
   #
   for (exit.v in exit.vs) {
@@ -2708,18 +2731,24 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
     index<-which(results[,1]%in%temp)
     results2<-results[index,]
     #
-    # Impute missing values, detrend, pre-white, and scale exit.v
+    # Calculate the number of lags to consider in dynamic regression 
+    # on detrended exit variable
     #
-    t<-seq(1,nrow(mydata),by=1)
-    mydata[[exit.v]]<-zoo::na.approx(mydata[[exit.v]],maxgap=4,na.rm=FALSE)
-    mydata[[exit.v]]<-residuals(lm(mydata[[exit.v]]~t,na.action=na.exclude))
-    fit<-ar(mydata[[exit.v]],order.max=30,na.action=na.pass) # autoregression
-    mydata[[exit.v]]<-fit$resid # we take residuals of autoregression
+    y<-mydata[[exit.v]]
+    tt<-seq_along(y)
+    y.d<-residuals(lm(y~tt,na.action=na.exclude))
+    nlag<-ar(y.d,order.max=30,na.action=na.pass)$order
+    message(exit.v,": ",nlag," lags")
+    writeLines(as.character(nlag),file.path(folder_path,exit.v,"n_lags.txt"))
+    #
+    # Scale exit.v
+    #
     mydata[[exit.v]]<-as.numeric(scale(mydata[[exit.v]]))
     #
-    # Convert exit.v into a binary variable and add it
+    # Convert exit.v into a binary variable: 1 for the upper quartile, 0 otherwise
     #
-    mydata$exit.v.b<-as.integer(mydata[[exit.v]]>=mean(mydata[[exit.v]],na.rm=T))
+    q.up<-quantile(mydata[[exit.v]],0.75,na.rm=T)
+    mydata$exit.v.b<-as.integer(mydata[[exit.v]]>=q.up)
     #
     # Regressions 
     #
@@ -2735,8 +2764,8 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
       for (nd in days) { 
         k<-max(nd,1) # window length: 1 day for nd = 0
         lag<-if (nd==0) 0 else 1 # nd = 0: today; nd >= 1: the nd days before today
-        weights<-seq(from=0,to=1,length.out=max(days)) # for the weighted mean
-        weights<-weights[(max(days)-k+1):max(days)] # take last k values
+        weights<-seq(from=0,to=1,length.out=MAXnd) # for the weighted mean
+        weights<-weights[(MAXnd-k+1):MAXnd] # take last k values
         mydata2<-mydata
         #
         # weighted mean and normalization
@@ -2751,6 +2780,15 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
           mydata2[,j]<-as.numeric(scale(mydata2[,j])) # normalization
         }
         #
+        # Add time and lagged exit variable as regressors (dynamic regression)
+        #
+        mydata2$t<-seq(1,nrow(mydata2),by=1)
+        DynCov<-"+t"
+        for (nl in seq_len(nlag)) {
+          mydata2[[paste0("Lag",nl)]]<-dplyr::lag(mydata2[[exit.v]],nl)  
+          DynCov<-paste0(DynCov,"+Lag",nl)
+        }
+        #
         # Regressions
         #
         for (j in seq_along(temp)) {
@@ -2758,7 +2796,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
           if (type=="marginal") {
             #
             if (fam=="binomial") {
-              form<-as.formula(paste("exit.v.b~",colnames(mydata2)[j]))
+              form<-as.formula(paste("exit.v.b~",colnames(mydata2)[j],DynCov))
               model<-try(glm(form,data=mydata2,family=binomial))
               if (inherits(model,"try-error")) {
                 message("Skipped: ",exit.v," ~ ",colnames(mydata2)[j],", nd = ",nd," (",trimws(model),")")
@@ -2768,7 +2806,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
                 myresults.all[j,(index+1)]<-"NE"
               } 
             } else if (fam=="gaussian") {
-              form<-as.formula(paste(exit.v,"~",colnames(mydata2)[j]))
+              form<-as.formula(paste(exit.v,"~",colnames(mydata2)[j],DynCov))
               model<-try(lm(form,data=mydata2))
               if (inherits(model,"try-error")) {
                 message("Skipped: ",exit.v," ~ ",colnames(mydata2)[j],", nd = ",nd," (",trimws(model),")")
@@ -2780,15 +2818,16 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
             } 
             if (is.na(p.mat[j,(index+1)])) {
               cf<-summary(model)$coefficients
-              if (nrow(cf)>1) {
-                p.mat.all[j,(index+1)]<-cf[2,4] 
-                myresults.all[j,(index+1)]<-cf[2,1] 
-                if (cf[2,4]<alpha) {
-                  p.mat[j,(index+1)]<-cf[2,4] 
-                  myresults[j,(index+1)]<-round(cf[2,1],2) 
+              a<-which(rownames(cf)==colnames(mydata2)[j])
+              if (length(a)!=0) {
+                p.mat.all[j,(index+1)]<-cf[a,4]
+                myresults.all[j,(index+1)]<-cf[a,1]
+                if (cf[a,4]<alpha) {
+                  p.mat[j,(index+1)]<-cf[a,4]
+                  myresults[j,(index+1)]<-round(cf[a,1],2)
                 } else {
                   p.mat[j,(index+1)]<-"NS"
-                  myresults[j,(index+1)]<-"NS" 
+                  myresults[j,(index+1)]<-"NS"
                 }
               }
             }
@@ -2798,7 +2837,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
             string<-paste(temp,collapse="+")
             #
             if (fam=="binomial") {
-              form<-as.formula(paste("exit.v.b~",string))
+              form<-as.formula(paste("exit.v.b~",string,DynCov))
               model<-try(glm(form,data=mydata2,family=binomial))
               if (inherits(model,"try-error")) {
                 message("Skipped: ",exit.v,"multinomial , nd = ",nd," (",trimws(model),")")
@@ -2808,7 +2847,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
                 myresults.all[j,(index+1)]<-"NE" 
               } 
             } else if (fam=="gaussian") {
-              form<-as.formula(paste(exit.v,"~",string))
+              form<-as.formula(paste(exit.v,"~",string,DynCov))
               model<-try(lm(form,data=mydata2))
               if (inherits(model,"try-error")) {
                 message("Skipped: ",exit.v,"multinomial , nd = ",nd," (",trimws(model),")")
@@ -2837,15 +2876,15 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
           #
           # Plot significant regressions
           #
-          if(!dir.exists(file.path(folder_path,exit.v,"plots"))) {
-            dir.create(file.path(folder_path,exit.v,"plots")) 
+          if(!dir.exists(file.path(folder_path,exit.v,"plots_nominal"))) {
+            dir.create(file.path(folder_path,exit.v,"plots_nominal")) 
           }
           v<-p.mat[j,(index+1)]
           if (!is.na(v) && !(v %in% c("NS","NE"))) {
             p1<-as.numeric(p.mat[j,(index+1)])
             if (p1<alpha) {
               file.name<-paste0(exit.v,"_",colnames(mydata2)[j],"_",nd,"_",fam,".png")
-              file.name<-file.path(folder_path,exit.v,"plots",file.name)
+              file.name<-file.path(folder_path,exit.v,"plots_nominal",file.name)
               png(file.name,width=800,height=400)
               a<-try(crPlots(model,terms=colnames(mydata2)[j],ylab=exit.v),silent=T)
               if (!inherits(a,"try-error")) {
@@ -2859,19 +2898,28 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
         index<-index+1
       }
       #
+      # Benjamini-Hochberg over the whole table (covariates x windows)
+      #
+      cols<-2:(length(days)+1)
+      pv<-suppressWarnings(as.numeric(p.mat.all[,cols])) # "NE" becomes NA
+      p.adj<-matrix(p.adjust(pv,method="BH"),nrow=nrow(p.mat.all))
+      sig<-!is.na(p.adj) & p.adj<alpha
+      p.mat[,cols][sig]<-signif(p.adj[sig],3)
+      p.mat[,cols][!sig & !is.na(p.adj)]<-"NS"
+      myresults[,cols][!sig & !is.na(p.adj)]<-"NS"
+      #
       # For multinomial regression, plot signed -log10 p values
       # (above zero: positive coefficient, below zero: negative coefficient)
       #
       if (type=="multinomial") {
         cols<-2:(length(days)+1)
-        pv<-suppressWarnings(matrix(as.numeric(p.mat.all[,cols]),nrow=nrow(p.mat.all)))
         cf.all<-suppressWarnings(matrix(as.numeric(myresults.all[,cols]),nrow=nrow(myresults.all)))
         p.cap<-16 # maximum -log10(p) shown
-        lp<- -log10(pmax(pv,10^-p.cap))*sign(cf.all)
+        lp<- -log10(pmax(p.adj,10^-p.cap))*sign(cf.all)
         nr<-nrow(lp)
         n.col<-ceiling(sqrt(nr))
         n.row<-ceiling(nr/n.col)
-        file.name<-file.path(folder_path,exit.v,paste0(type,"_log10p_",exit.v,"_",fam,".png"))
+        file.name<-file.path(folder_path,exit.v,paste0(type,"_log10P_BH_",exit.v,"_",fam,".png"))
         png(file.name,width=4*n.col,height=3.3*n.row,units="in",res=300)
         par(mfrow=c(n.row,n.col),mar=c(4,4,3,1),oma=c(0,0,3,0))
         for (i in 1:nr) {
@@ -2898,4 +2946,38 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
       write.table(p.mat,file=file.name,quote=F,row.names=F,col.names=T,sep=",")
     }
   }
+}
+#
+#---- Retrieve data to plug in the LaTeX script of the paper--------------------
+#
+mynumbers<-function(mydata) {
+  old.locale<-Sys.getlocale("LC_TIME")
+  Sys.setlocale("LC_TIME","C") # English month names
+  #
+  span<-function(df,v) {
+    d<-mydata$date[!is.na(mydata[[v]])]
+    c(format(as.Date(HRD(min(d))),"%d %B %Y"),
+      format(as.Date(HRD(max(d))),"%d %B %Y"),
+      length(d))
+  }
+  eeg<-span(mydata,"Alpha")
+  nirs<-span(mydata,"L.Outer.Hb")
+  hrv<-span(mydata,"SDNN")
+  bia<-span(BIA.row,"Weight")
+  writeLines(c(
+    paste0("\\newcommand{\\eegStart}{",eeg[1],"}"),
+    paste0("\\newcommand{\\eegEnd}{",eeg[2],"}"),
+    paste0("\\newcommand{\\eegDays}{",eeg[3],"}"),
+    paste0("\\newcommand{\\fnirsStart}{",nirs[1],"}"),
+    paste0("\\newcommand{\\fnirsEnd}{",nirs[2],"}"),
+    paste0("\\newcommand{\\fnirsDays}{",nirs[3],"}"),
+    paste0("\\newcommand{\\hrvStart}{",hrv[1],"}"),
+    paste0("\\newcommand{\\hrvEnd}{",hrv[2],"}"),
+    paste0("\\newcommand{\\hrvDays}{",hrv[3],"}"),
+    paste0("\\newcommand{\\biaStart}{",bia[1],"}"),
+    paste0("\\newcommand{\\biaEnd}{",bia[2],"}"),
+    paste0("\\newcommand{\\biaDays}{",bia[3],"}")),
+    file.path("Output","paper_numbers.tex"))
+  #
+  Sys.setlocale("LC_TIME",old.locale) # back to Italian
 }
