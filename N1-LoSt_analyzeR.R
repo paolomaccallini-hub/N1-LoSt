@@ -477,7 +477,7 @@ mydata0<-read.csv(file.name,header=T,sep=",")
 variables<-c("HR","HR.1","HR.2","HR.3","HR.4","HR.5","HR.6","HR.7","HR.8","HR.9","HR.10")
 mydata<-subset.data.frame(mydata0,select=variables)
 data.select="Heart Rate (bmp)"
-deg<-2
+deg<-4
 LeanTest_plot(mydata,data.select,deg)             
 #
 # Plotting: Delta HR
