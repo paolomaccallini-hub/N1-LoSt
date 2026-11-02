@@ -37,6 +37,15 @@ library(tidyr)
 library(ggplot2)
 library(scales)
 #
+# write on the screen a few useful citations in Bibtex format
+#
+toBibtex(citation("zoo"))
+toBibtex(citation("runner"))
+toBibtex(citation("car"))
+toBibtex(citation("eegkit"))
+toBibtex(citation("eegkit"))
+toBibtex(citation())        
+#
 # parameters
 #
 R<-8.31 # constant for ideal gasses (J/(K*mole))
@@ -2874,7 +2883,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
             }
           }
           #
-          # Plot significant regressions
+          # Plot nominally significant regressions
           #
           if(!dir.exists(file.path(folder_path,exit.v,"plots_nominal"))) {
             dir.create(file.path(folder_path,exit.v,"plots_nominal")) 

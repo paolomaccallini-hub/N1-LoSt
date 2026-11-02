@@ -469,7 +469,6 @@ retained as additional variables.
 
 \subsection{Data processing}\label{sec:processing}
 
-
 \subsection{Dynamic regression}\label{sec:dynareg}
 
 Measurements repeated on the same subject over time are not independent, and
@@ -483,11 +482,11 @@ these data, dynamic regression is one of the simplest
 its own past values, introduced as endogenous covariates, which absorb the
 autocorrelation of the series. An implementation in R of the pipeline described by
 McDonald and colleagues \citep{mcdonald2020} was presented in a previous work
-\citep{maccallini2024dynreg}. Here it is extended in three directions: predictors are
+\citep{maccallini2024dynreg}. In the present implementation of that pipeline, predictors are
 summarised over time windows of increasing length, to capture delayed and cumulative
-effects; the number of lags is selected automatically and a time term is included to
-account for long-term trends; and the significance of the results is corrected for
-the large number of predictors and windows tested.
+effects; the number of lags of the outcome is selected automatically for each
+outcome, and a time term accounts for long-term linear trends; and the significance of the
+statistical tests on regression coefficients is corrected for multiple comparisons.
 
 \paragraph{Preparation of covariates.}
 For each covariate, the number of days of use and non-use (for non-negative
@@ -513,15 +512,18 @@ covariate on day $t$ was replaced by its weighted mean over the $n$ preceding da
 where the sums run over the days with available data and $M = 32$. The weights
 decrease linearly with the distance from the outcome, from 1 on the previous day to 0
 for the day $M$ days earlier, so the effect of a covariate is assumed to fade linearly
-over about one month. The windows considered were $n = 0, 1, 8, 16, 32$ days
-\citep{runner}. Each windowed covariate was standardised again, so its coefficients
-are expressed per standard deviation.
+over about one month. Windows extending before the start of the series were not
+computed. The windows considered varied according to the covariates: for drugs and supplements, 
+as an example, they were $n = 0, 1, 8, 16, 32$ days. After weighted means were computed,
+the windowed covariates were standardised again. Standardization was used to make
+the coefficients of different combinations of covariates and windows comparable. 
+Weighted means were computed with the R package \texttt{runner} \citep{runner}.
 
 \paragraph{Outcome.}
-The outcome was standardised without imputation, so that days without a measurement
-did not contribute to the models. Two versions were analysed: the standardised
-outcome itself (linear regression), and a binary variable equal to 1 on days in the
-upper quartile of the outcome and 0 otherwise (logistic regression).
+The outcome was standardised without imputation, so days without a measurement did
+not contribute to the models. Two versions were analysed: the standardised outcome
+itself (linear regression), and a binary variable equal to 1 on days in the upper
+quartile of the outcome and 0 otherwise (logistic regression).
 
 \paragraph{Models.}
 For each covariate, window, and version of the outcome, the following model was
@@ -532,33 +534,33 @@ fitted:
 \end{equation}
 where $g$ is the identity for the linear models and the logit for the logistic
 models, $t$ is time in days, and $y_{t-l}$ is the standardised outcome $l$ days
-earlier. The time term accounts for the long-term trend of the outcome, and the
-lagged outcomes account for its autocorrelation, so $\beta$ measures the association
-of the covariate with the outcome beyond what is expected from the trend and the
-recent course of the outcome. The number of lags $p$ was selected with the Akaike
-information criterion \citep{akaike1974}, among autoregressive models of order up to
-30 fitted to the linearly detrended outcome.
-% TODO: value of p used for each outcome (e.g. p = 14 for Score_m).
-Days with missing values in any term of a model were excluded from that model.
+earlier, used in both linear and logistic models. Following \citet{mcdonald2020}, the
+lagged outcomes were included as endogenous covariates, to account for the
+autocorrelation of the outcome, and the time term accounts for its long-term trend.
+Hence $\beta$ measures the association of the covariate with the outcome beyond what
+is expected from the trend and the recent course of the outcome. The number of lags 
+$p$ was selected separately for each outcome with the Akaike information criterion, 
+among autoregressive models of order 0 to 30 fitted to the outcome after removal 
+of its linear trend, using the function \texttt{ar} of R \citep{Rcore}.
 
 The models were fitted in two ways. In the marginal analysis, each covariate entered
-a separate model, so its coefficient reflects all the associations that the covariate
-shares with other, correlated covariates. In this analysis, products of covariates
-were treated as composite exposures. In the joint analysis, all the covariates of a
-predefined group (e.g.\ meteorological variables) entered the same model, so each
-coefficient is adjusted for the other covariates of the group. Interactions were
-interpreted only in this analysis, where the product is estimated together with its
-main effects.
+a separate model, so its coefficient also reflects the associations that the
+covariate shares with other, correlated covariates. In this analysis, products of
+covariates were treated as composite exposures. In the joint analysis, all the
+covariates of a predefined group (e.g.\ meteorological variables) entered the same
+model, so each coefficient is adjusted for the other covariates of the group.
+Interactions were interpreted only in this analysis, where the product is estimated
+together with its main effects.
 
 \paragraph{Multiple comparisons.}
 For each outcome, version of the outcome, type of analysis, and group of covariates,
 the $p$-values of all covariates and windows were corrected jointly with the
 Benjamini--Hochberg procedure \citep{benjamini1995}, and associations with an adjusted
 $p < 0.05$ were considered significant, which corresponds to a false discovery rate of
-5\%. For associations with an unadjusted $p < 0.05$, component-plus-residual plots
-were produced \citep{fox_car}. For the joint analysis, the signed $-\log_{10}$ of the
-adjusted $p$-values was plotted for each covariate as a function of the window length,
-positive for positive coefficients and negative for negative ones.
+5\%. For associations with an unadjusted $p < 0.05$, partial regression plots
+were produced using function \texttt{crPlots} from the \texttt{car} package \citep{car}. 
+For the joint analysis, the signed $-\log_{10}$ of the adjusted $p$-values was plotted 
+for each covariate as a function of the window length, positive for positive coefficients and negative for negative ones.
 
 % =============================================================================
 \section{Results}\label{sec:results}

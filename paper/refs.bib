@@ -1,5 +1,7 @@
 % References for main.tex. Cite with \citep{key} or \citet{key}.
 
+% References to my previous preprints and blog posts 
+
 @misc{maccallini2024hrv,
   author    = {Maccallini, Paolo},
   title     = {Introduction to the analysis of heart rate variability from 5-minute recordings},
@@ -8,6 +10,128 @@
   doi       = {10.5281/zenodo.20177290},
   url       = {https://doi.org/10.5281/zenodo.20177290}
 }
+
+@misc{maccallini2026fnirs,
+  author    = {Maccallini, Paolo},
+  title     = {Functional near infrared spectroscopy},
+  year      = {2026},
+  note      = {Technical note, October 2026},
+  publisher = {Zenodo}, doi = {https://doi.org/10.5281/zenodo.23663601}, url = {https://zenodo.org/records/23663601}
+}
+
+@misc{maccallini2024dynreg,
+  author    = {Maccallini, Paolo},
+  title     = {Dynamic regression of n-of-1 observational data},
+  year      = {2024},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.20177200},
+  url       = {https://doi.org/10.5281/zenodo.20177200}
+}
+
+% Statistics references
+
+@article{benjamini1995,
+  author  = {Benjamini, Yoav and Hochberg, Yosef},
+  title   = {Controlling the false discovery rate: a practical and powerful approach to multiple testing},
+  journal = {Journal of the Royal Statistical Society: Series B (Methodological)},
+  year    = {1995},
+  volume  = {57},
+  number  = {1},
+  pages   = {289--300},
+  doi     = {10.1111/j.2517-6161.1995.tb02031.x}
+}
+
+@article{mcdonald2020,
+  author  = {McDonald, Suzanne and Vieira, Rute and Johnston, Derek W.},
+  title   = {Analysing {N}-of-1 observational data in health psychology and behavioural medicine: a 10-step {SPSS} tutorial for beginners},
+  journal = {Health Psychology and Behavioral Medicine},
+  year    = {2020},
+  volume  = {8},
+  number  = {1},
+  pages   = {32--54},
+  doi     = {10.1080/21642850.2019.1711096}
+}
+
+@article{vieira2017,
+  author  = {Vieira, Rute and McDonald, Suzanne and Ara{\'u}jo-Soares, Vera and Sniehotta, Falko F. and Henderson, Robin},
+  title   = {Dynamic modelling of n-of-1 data: powerful and flexible data analytics applied to individualised studies},
+  journal = {Health Psychology Review},
+  year    = {2017},
+  volume  = {11},
+  number  = {3},
+  pages   = {222--234},
+  doi     = {10.1080/17437199.2017.1343680}
+}
+
+@article{mcdonald2017,
+  author  = {McDonald, Suzanne and Quinn, Francis and Vieira, Rute and O'Brien, Nicola and White, Martin and Johnston, Derek W. and Sniehotta, Falko F.},
+  title   = {The state of the art and future opportunities for using longitudinal n-of-1 methods in health behaviour research: a systematic literature overview},
+  journal = {Health Psychology Review},
+  year    = {2017},
+  volume  = {11},
+  number  = {4},
+  pages   = {307--323},
+  doi     = {10.1080/17437199.2017.1316672}
+}
+
+@book{montgomery2012,
+  author    = {Montgomery, Douglas C. and Peck, Elizabeth A. and Vining, G. Geoffrey},
+  title     = {Introduction to Linear Regression Analysis},
+  edition   = {5},
+  publisher = {Wiley},
+  address   = {Hoboken, NJ},
+  year      = {2012}
+}
+
+% Packages and software
+
+@Manual{Rcore,
+  title = {R: A Language and Environment for Statistical Computing},
+  author = {{R Core Team}},
+  organization = {R Foundation for Statistical Computing},
+  address = {Vienna, Austria},
+  year = {2024},
+  url = {https://www.R-project.org/},
+}
+
+@Manual{helwig_eegkit,
+  title = {eegkit: Toolkit for Electroencephalography Data},
+  author = {Nathaniel E. Helwig},
+  year = {2025},
+  note = {R package version 1.0-5},
+  url = {https://CRAN.R-project.org/package=eegkit},
+}
+
+@Article{zoo,
+  title = {zoo: S3 Infrastructure for Regular and Irregular Time Series},
+  author = {Achim Zeileis and Gabor Grothendieck},
+  journal = {Journal of Statistical Software},
+  year = {2005},
+  volume = {14},
+  number = {6},
+  pages = {1--27},
+  doi = {10.18637/jss.v014.i06},
+}
+
+@Manual{runner,
+  title = {runner: Running Operations for Vectors},
+  author = {Dawid Kałędkowski},
+  year = {2026},
+  note = {R package version 0.4.6},
+  url = {https://CRAN.R-project.org/package=runner},
+}
+
+@Book{car,
+  title = {An {R} Companion to Applied Regression},
+  edition = {Third},
+  author = {John Fox and Sanford Weisberg},
+  year = {2019},
+  publisher = {Sage},
+  address = {Thousand Oaks {CA}},
+  url = {https://www.john-fox.ca/Companion/},
+}
+
+% Heart rate variability references
 
 @article{taskforce1996,
   author  = {{Task Force of the European Society of Cardiology and the North American Society of Pacing and Electrophysiology}},
@@ -61,6 +185,8 @@
   doi     = {10.1093/sleep/30.7.913}
 }
 
+% Cardiology 
+
 @misc{bhc_nasa_lean,
   author       = {{Bateman Horne Center}},
   title        = {{NASA} 10 Minute Lean Test: Instructions for Providers},
@@ -89,12 +215,13 @@
   doi     = {10.1007/BF02608853}
 }
 
-@misc{maccallini2026fnirs,
-  author    = {Maccallini, Paolo},
-  title     = {Functional near infrared spectroscopy},
-  year      = {2026},
-  note      = {Technical note, October 2026},
-  publisher = {Zenodo}, doi = {https://doi.org/10.5281/zenodo.23663601}, url = {https://zenodo.org/records/23663601}
+% Near-infrared spectroscopy references
+
+@misc{clutterbuck_mindmonitor,
+  author = {Clutterbuck, James},
+  title  = {Mind Monitor {FAQ}},
+  year   = {2024},
+  url    = {https://mind-monitor.com/FAQ.php}
 }
 
 @article{delpy1988,
@@ -122,14 +249,9 @@
 @misc{prahl_hb,
   author = {Prahl, Scott},
   title  = {Tabulated molar extinction coefficient for hemoglobin in water},
+  year = {1998},
   howpublished = {Oregon Medical Laser Center},
   url    = {https://omlc.org/spectra/hemoglobin/summary.html}
-}
-
-@misc{clutterbuck_mindmonitor,
-  author = {Clutterbuck, James},
-  title  = {Mind Monitor {FAQ}},
-  url    = {https://mind-monitor.com/FAQ.php}
 }
 
 @article{krigolson2017,
@@ -140,62 +262,4 @@
   volume  = {11},
   pages   = {109},
   doi     = {10.3389/fnins.2017.00109}
-}
-
-@manual{helwig_eegkit,
-  author = {Helwig, Nathaniel E.},
-  title  = {eegkit: Toolkit for Electroencephalography Data},
-  note   = {R package},
-  url    = {https://CRAN.R-project.org/package=eegkit}
-}
-
-@misc{maccallini2024dynreg,
-  author    = {Maccallini, Paolo},
-  title     = {Dynamic regression of n-of-1 observational data},
-  year      = {2024},
-  publisher = {Zenodo},
-  doi       = {10.5281/zenodo.20177200},
-  url       = {https://doi.org/10.5281/zenodo.20177200}
-}
-
-@article{mcdonald2020,
-  author  = {McDonald, Suzanne and Vieira, Rute and Johnston, Derek W.},
-  title   = {Analysing {N}-of-1 observational data in health psychology and behavioural medicine: a 10-step {SPSS} tutorial for beginners},
-  journal = {Health Psychology and Behavioral Medicine},
-  year    = {2020},
-  volume  = {8},
-  number  = {1},
-  pages   = {32--54},
-  doi     = {10.1080/21642850.2019.1711096}
-}
-
-@article{vieira2017,
-  author  = {Vieira, Rute and McDonald, Suzanne and Ara{\'u}jo-Soares, Vera and Sniehotta, Falko F. and Henderson, Robin},
-  title   = {Dynamic modelling of n-of-1 data: powerful and flexible data analytics applied to individualised studies},
-  journal = {Health Psychology Review},
-  year    = {2017},
-  volume  = {11},
-  number  = {3},
-  pages   = {222--234},
-  doi     = {10.1080/17437199.2017.1343680}
-}
-
-@article{mcdonald2017,
-  author  = {McDonald, Suzanne and Quinn, Francis and Vieira, Rute and O'Brien, Nicola and White, Martin and Johnston, Derek W. and Sniehotta, Falko F.},
-  title   = {The state of the art and future opportunities for using longitudinal n-of-1 methods in health behaviour research: a systematic literature overview},
-  journal = {Health Psychology Review},
-  year    = {2017},
-  volume  = {11},
-  number  = {4},
-  pages   = {307--323},
-  doi     = {10.1080/17437199.2017.1316672}
-}
-
-@book{montgomery2012,
-  author    = {Montgomery, Douglas C. and Peck, Elizabeth A. and Vining, G. Geoffrey},
-  title     = {Introduction to Linear Regression Analysis},
-  edition   = {5},
-  publisher = {Wiley},
-  address   = {Hoboken, NJ},
-  year      = {2012}
 }
