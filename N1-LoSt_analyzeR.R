@@ -421,7 +421,7 @@ LeanTest_plot(mydata,data.select,deg)
 #
 ##--- Study of positivity to POTS and/or OI ------------------------------------
 #
-# Function for plotting
+# Function for plotting studies of Lean Tests by minute standing
 #
 pots.bar<-function(y,lab,ylab,main,file.name) {
   jpeg(file.path("Output","LeanTest",file.name),quality=100,res=100,width=800,height=800)
@@ -530,156 +530,102 @@ print(tab) # counts
 print(round(prop.table(tab,1),2)) # share of OH-positive tests by POTS status
 print(fisher.test(tab))
 #
-# Is the regression coefficient of Delta.HR of 10-minute Lean test predicted 
-# by a test of shorter duration?
+##--- Search for a predictor of LTs of 10 minutes from shorter LTs -------------
 #
-mydata<-subset.data.frame(mydata0,!is.na(Delta.HR.10)) # only 10-minute lean tests
-mydata<-subset.data.frame(mydata,max.Delta.HR>=30) # only positive 10-minute lean tests
-mydata<-mydata[paste0("Delta.HR.",1:10)]
+# type: slope, ratio.max, max, ratio.mean, mean
 #
-# Build the regression coefficients for duration from 3 minutes to ten
-#
-for (m in 3:10) {
-  mydata[[paste0("Delta.HR.",m,".beta")]]<-NA
-  for (i in 1:nrow(mydata)) {
-    v<-as.vector(transpose(mydata[i,1:m]))
-    df<-data.frame(time=seq(1,m,1),Delta.HR=v$V1)
-    model<-try(lm(Delta.HR~time,data=df),silent=T)
-    if (is.list(model)) {
-      beta<-model$coefficients[2]
-      if (!is.na(beta)) {
-        mydata[[paste0("Delta.HR.",m,".beta")]][i]<-beta
+Find_Error_func<-function(mydata0,type) {
+  #
+  mydata<-subset.data.frame(mydata0,!is.na(Delta.HR.10)) # only 10-minute lean tests
+  mydata<-mydata[paste0("Delta.HR.",1:10)]
+  #
+  # Build the regression coefficients for duration from 3 minutes to ten
+  #
+  for (m in 3:10) {
+    mydata[[paste0("Delta.HR.",m,".",type)]]<-NA
+    for (i in 1:nrow(mydata)) {
+      v<-as.vector(transpose(mydata[i,1:m]))
+      #
+      if (type=="slope") {
+        df<-data.frame(time=seq(1,m,1),Delta.HR=v$V1)
+        model<-try(lm(Delta.HR~time,data=df),silent=T)
+        if (is.list(model)) {
+          beta<-model$coefficients[2]
+          if (!is.na(beta)) {
+            mydata[[paste0("Delta.HR.",m,".",type)]][i]<-beta
+          }
+        }  
+      } else if (type=="max.ratio") {
+        if (!is.infinite(max(v$V1,na.rm=T))) {
+          mydata[[paste0("Delta.HR.",m,".",type)]][i]<-max(v$V1,na.rm=T)/m
+        } 
+      } else if (type=="max") {
+        if (!is.infinite(max(v$V1,na.rm=T))) {
+          mydata[[paste0("Delta.HR.",m,".",type)]][i]<-max(v$V1,na.rm=T)
+        } 
+      } else if (type=="mean.ratio") {
+        if (!is.infinite(max(v$V1,na.rm=T))) {
+          mydata[[paste0("Delta.HR.",m,".",type)]][i]<-mean(v$V1,na.rm=T)/m
+        } 
+      } else if (type=="mean") {
+        if (!is.infinite(max(v$V1,na.rm=T))) {
+          mydata[[paste0("Delta.HR.",m,".",type)]][i]<-mean(v$V1,na.rm=T)
+        } 
       }
     }
   }
+  #
+  # Calculate absolute relative error
+  #
+  mydata<-mydata[paste0("Delta.HR.",3:10,".",type)] 
+  for (m in 3:9) {
+    cname<-paste0("Delta.HR.",m,".",type)
+    mydata[[cname]]<-round(100*abs(mydata[[cname]]-mydata[[paste0("Delta.HR.10.",type)]])/abs(mydata[[paste0("Delta.HR.10",".",type)]]))
+  }
+  for (j in 1:ncol(mydata)) {
+    x<-mydata[,j]
+    out<-boxplot.stats(x)$out # outliers
+    mydata[,j][x %in% out]<-NA  # remove outliers
+  }
+  #
+  # Plot the errors
+  #
+  file.name<-paste0("Delta_HR_",type,"_RAE_by_minute_10_min_LT.jpeg")
+  jpeg(file.path("Output","LeanTest",file.name),quality=100,res=100,width=800,height=800)
+  max.err<-quantile(mydata[paste0("Delta.HR.",3:9,".",type)],na.rm=T)
+  bp<-boxplot(mydata[paste0("Delta.HR.",3:9,".",type)],names=seq(3,9),xlab="Minutes standing",
+              ylab=paste0("Delta.HR ",type," RAE (%)"),ylim=c(0,max.err[4]))
+  abline(h=c(10,20),col="red",lty=2,lwd=2)
+  dev.off()
+  #
 }
 #
-# Calculate absolute relative error
+# Is the regression coefficient of Delta.HR of 10-minute Lean test predicted 
+# by a test of shorter duration?
 #
-mydata<-mydata[paste0("Delta.HR.",3:10,".beta")] 
-for (m in 3:9) {
-  cname<-paste0("Delta.HR.",m,".beta")
-  mydata[[cname]]<-round(100*abs(mydata[[cname]]-mydata[["Delta.HR.10.beta"]]/mydata[["Delta.HR.10.beta"]]))
-}
-#
-# Plot the errors
-#
-file.name<-"Delta_HR_Slope_relative_absolute_error_by_minute_10_min_LT.jpeg"
-jpeg(file.path("Output","LeanTest",file.name),quality=100,res=100,width=800,height=800)
-max.err<-quantile(mydata[paste0("Delta.HR.",3:9,".beta")],na.rm=T)
-bp<-boxplot(mydata[paste0("Delta.HR.",3:9,".beta")],names=seq(3,9),xlab="Minutes standing",
-            ylab="Delta.HR regression RAE (%)",ylim=c(0,max.err[5]))
-dev.off()
+Find_Error_func(mydata0,type="slope")
 #
 # Is max.Delta.HR/duration of 10-minute Lean test predicted 
 # by a test of shorter duration?
 #
-mydata<-subset.data.frame(mydata0,!is.na(Delta.HR.10)) # only 10-minute lean tests
-mydata<-subset.data.frame(mydata,max.Delta.HR>=30) # only positive 10-minute lean tests
-mydata<-mydata[paste0("Delta.HR.",1:10)]
+Find_Error_func(mydata0,type="max.ratio")
 #
-# Build the regression coefficients for duration from 3 minutes to ten
+# Is max.Delta.HR of 10-minute Lean test predicted 
+# by a test of shorter duration?
 #
-for (m in 3:10) {
-  mydata[[paste0("Delta.HR.",m,".ratio")]]<-NA
-  for (i in 1:nrow(mydata)) {
-    v<-as.vector(transpose(mydata[i,1:m]))
-    mydata[[paste0("Delta.HR.",m,".ratio")]][i]<-max(v$V1,na.rm=T)/m
-  }
-}
-#
-# Calculate absolute relative error
-#
-mydata<-mydata[paste0("Delta.HR.",3:10,".ratio")] 
-for (m in 3:9) {
-  cname<-paste0("Delta.HR.",m,".ratio")
-  mydata[[cname]]<-round(100*abs(mydata[[cname]]-mydata[["Delta.HR.10.ratio"]]/mydata[["Delta.HR.10.ratio"]]))
-}
-#
-# Plot the errors
-#
-file.name<-"Delta_HR_ratio_relative_absolute_error_by_minute_10_min_LT.jpeg"
-jpeg(file.path("Output","LeanTest",file.name),quality=100,res=100,width=800,height=800)
-max.err<-quantile(mydata[paste0("Delta.HR.",3:9,".ratio")],na.rm=T)
-bp<-boxplot(mydata[paste0("Delta.HR.",3:9,".ratio")],names=seq(3,9),xlab="Minutes standing",
-            ylab="Delta.HR/duration RAE (%)",ylim=c(0,max.err[5]))
-dev.off()
-
-
-
-
-
-
+Find_Error_func(mydata0,type="max")
 #
 # Is mean.Delta.HR/duration of 10-minute Lean test predicted 
 # by a test of shorter duration?
 #
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-mydata<-subset.data.frame(mydata0,!is.na(Delta.HR.10)) # only 10-minute lean tests
-mydata<-subset.data.frame(mydata,max.Delta.HR>=30) # only positive 10-minute lean tests
-mydata<-subset.data.frame(mydata,select=c(variables))
-for (m in 3:10) {
-  mydata[[paste0("Delta.HR.",m,".ratio")]]<-NA
-  for (i in 1:nrow(mydata)) {
-    v<-as.vector(transpose(mydata[i,1:m]))
-    mydata[[paste0("Delta.HR.",m,".ratio")]][i]<-max(v$V1,na.rm=T)/m
-  }
-}
-mydata[,variables]<-NULL
-NC<-ncol(mydata)
-for (j in 1:(NC-1)) mydata[,j]<-abs(mydata[,j]-mydata[,NC])/mydata[,NC] # relative absolute error
-
-bp<-boxplot(100*mydata[,1:(NC-1)],names=seq(3,9),xlab="Minutes standing",ylab="relative absolute error (%)")
-
-
-mydata<-subset.data.frame(mydata0,!is.na(Delta.HR.10)) # only 10-minute lean tests
-mydata<-subset.data.frame(mydata,max.Delta.HR>=30) # only positive 10-minute lean tests
-mydata<-subset.data.frame(mydata,select=c(variables))
-for (m in 3:10) {
-  mydata[[paste0("Delta.HR.",m,".ratio")]]<-NA
-  for (i in 1:nrow(mydata)) {
-    v<-as.vector(transpose(mydata[i,1:m]))
-    mydata[[paste0("Delta.HR.",m,".ratio")]][i]<-max(v$V1,na.rm=T)
-  }
-}
-mydata[,variables]<-NULL
-NC<-ncol(mydata)
-for (j in 1:(NC-1)) mydata[,j]<-abs(mydata[,j]-mydata[,NC])/mydata[,NC] # relative absolute error
-
-bp<-boxplot(100*mydata[,1:(NC-1)],names=seq(3,9),xlab="Minutes standing",ylab="relative absolute error (%)")
-
-
-
-
-
-
-
+Find_Error_func(mydata0,type="mean.ratio")
 #
-means<-sapply(mydata,mean,na.rm=T) # calculate means
-points(x=1:length(means),y=means,pch=19,col="red") # add means to plot
-means<-round(means,0)
-text(x=(1:length(means))+0.2,y=means,labels=means,cex=1,col="red")
-
-
-
-
-
-
+# Is mean.Delta.HR of 10-minute Lean test predicted 
+# by a test of shorter duration?
 #
-# Time series
+Find_Error_func(mydata0,type="mean")
+#
+##---- Time series -------------------------------------------------------------
 #
 variables<-c("date","Score_m","Max.Delta.HR","Min.Delta.Sys","Steps.C")
 start<-"2025-12-01"
