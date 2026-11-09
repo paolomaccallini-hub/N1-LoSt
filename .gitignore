@@ -2,6 +2,9 @@
 # be downloaded separately and unzipped into the root of the repository. 
 /Data
 
+# Output files are temporarily not included in the repository.  
+/Output
+
 # Procedure on how to upload data (for personal use only).
 *.docx
 
