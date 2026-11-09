@@ -1071,121 +1071,6 @@ ShellyTurbo_func<-function() {
 #
 #---- Wearables ----------------------------------------------------------------
 #
-# Load and edit data from Bio Impedance Scale.
-# Then remove the original file from the folder.
-# 
-Fitdays<-function() {
-  #
-  # Read the file exported by the app. Despite the .csv extension it is a
-  # legacy Excel (.xls) workbook, so read_xls is used instead of read.csv.
-  #
-  current_dir <- getwd()
-  sub_dir     <- "Fitdays"
-  folder_path <- file.path(current_dir,"Data",sub_dir)
-  file.name   <- list.files(folder_path)
-  file.name   <- file.path(folder_path, file.name)
-  BIA <- as.data.frame(readxl::read_xls(file.name[1], col_types = "text"))
-  names(BIA) <- make.names(names(BIA))
-  #
-  # The app writes "Skeletal Muscle" and "Muscle Mass"; keep the old names
-  #
-  names(BIA)[names(BIA) == "Skeletal.Muscle"] <- "Skeletal.muscle"
-  names(BIA)[names(BIA) == "Muscle.Mass"]     <- "Muscle.mass"
-  #
-  # Add epoch. Date looks like "11:33 Dec.29,2020"
-  #
-  month_abbrev <- c("Jan","Feb","Mar","Apr","May","Jun",
-                    "Jul","Aug","Sep","Oct","Nov","Dec")
-  #
-  for (i in 1:nrow(BIA)) {
-    Month <- substr(BIA$Date[i], 7, 9)
-    Month <- match(Month, month_abbrev)
-    Year  <- substr(BIA$Date[i], nchar(BIA$Date[i]) - 3, nchar(BIA$Date[i]))
-    Day   <- substr(BIA$Date[i], 11, nchar(BIA$Date[i]) - 5)
-    BIA$date[i] <- epoch(paste(Month, Day, Year, sep = "/"), format = "MDY")
-  }
-  #
-  # Remove a few columns
-  #
-  BIA <- subset.data.frame(BIA, select = -Date)
-  BIA <- subset.data.frame(BIA, select = -Heart.Rate)
-  BIA <- subset.data.frame(BIA, select = -Cardiac.Index)
-  BIA <- subset.data.frame(BIA, select = -Body.age)
-  #
-  # Remove units of measure. Note [^0-9.] and not [^0-9]: the latter deletes
-  # the decimal point and turns 90.0kg into 900. Failed readings ("- -")
-  # become NA.
-  #
-  for (j in 1:ncol(BIA)) {
-    BIA[, j] <- gsub("[^0-9.]", "", as.character(BIA[, j]))
-    BIA[, j][BIA[, j] == "" | BIA[, j] == "."] <- NA
-    BIA[, j] <- as.numeric(BIA[, j])
-  }
-  #
-  BIA$Skeletal.muscle.mass  <- BIA$Skeletal.muscle  * BIA$Weight / 100
-  BIA$Subcutaneous.fat.mass <- BIA$Subcutaneous.fat * BIA$Weight / 100
-  BIA$Body.fat.mass         <- BIA$Body.Fat         * BIA$Weight / 100
-  BIA$Visceral.fat.mass     <- BIA$Body.fat.mass - BIA$Subcutaneous.fat.mass
-  #
-  # If more than one measure is present for the same day, keep only the first
-  #
-  BIA <- BIA[!duplicated(BIA$date), ]
-  #
-  for (j in 1:ncol(BIA)) {
-    BIA[, j] <- round(BIA[, j], digits = 3)
-  }
-  rownames(BIA) <- NULL
-  #
-  return(BIA)
-}
-#
-# Load and edit data from ShapeGanic app (macronitrients)
-# 
-ShapeGanic<-function() {
-  #
-  # Read the txt file with tabs 
-  #
-  current_dir<-getwd()
-  sub_dir<-"ShapeGanic"
-  folder_path<-file.path(current_dir,"Data",sub_dir)
-  file.name<-list.files(folder_path)
-  file.name<-paste0(folder_path,"/",file.name)
-  macro<-read.csv(file.name[1],header=T,sep=",")
-  if (length(file.name)>1) {
-    for (i in 2:length(file.name)) macro<-rbind(macro,read.csv(file.name[i],header=T,sep=","))
-  }
-  macro<-unique(macro)
-  #
-  # Add epoch
-  #
-  for (i in 1:nrow(macro)) {
-    macro$date[i]<-epoch(macro$Date[i],format="YMD")
-  }
-  #
-  # Calculate daily values
-  #
-  n.days<-length(unique(macro$date))
-  macro.daily<-data.frame(kcal=rep(NA,n.days),carbo.g=rep(NA,n.days),
-                          protein.g=rep(NA,n.days),fat.g=rep(NA,n.days),
-                          date=rep(NA,n.days))
-  for (i in 1:n.days) {
-    df<-subset.data.frame(macro,date==unique(macro$date)[i])
-    macro.daily$kcal[i]<-sum(df$Calories...Cal)
-    macro.daily$carbo.g[i]<-sum(df$Carbohydrates...g)
-    macro.daily$protein.g[i]<-sum(df$Protein...g)
-    macro.daily$fat.g[i]<-sum(df$Fats...g)
-    macro.daily$date[i]<-df$date[1]
-  }
-  #
-  # Remove days with less than 1000 kcal (likely missing data)
-  #
-  for (i in 1:nrow(macro.daily)) {
-    if (macro.daily$kcal[i]<1000) macro.daily[i,]<-rep(NA,ncol(macro.daily))
-  }
-  #
-  return(macro.daily)
-}
-#
 # Load and edit data from MUSE EEG
 # 
 EEG_func<-function() {
@@ -1679,8 +1564,8 @@ fNIRS_func<-function(year) {
   for (j in 1:ncol(mydata)) {
     if (colnames(mydata)[j]!="date") {
       x<-mydata[,j]
-      out<-boxplot.stats(x)$out 
-      temp[,j][x %in% out]<-NA  
+      out<-boxplot.stats(x)$out # outliers
+      temp[,j][x %in% out]<-NA  # remove outliers
     }
   }
   fNIRS_plot(temp,select=3)
@@ -1721,6 +1606,228 @@ fNIRS_func<-function(year) {
   # Results
   #
   return(myconc)
+}
+#
+#---- Nutrition and weight -----------------------------------------------------
+#
+# Load and edit data from Bio Impedance Scale.
+# Then remove the original file from the folder.
+# 
+Fitdays<-function() {
+  #
+  # Read the file exported by the app. Despite the .csv extension it is a
+  # legacy Excel (.xls) workbook, so read_xls is used instead of read.csv.
+  #
+  current_dir <- getwd()
+  sub_dir     <- "Fitdays"
+  folder_path <- file.path(current_dir,"Data",sub_dir)
+  file.name   <- list.files(folder_path)
+  file.name   <- file.path(folder_path, file.name)
+  BIA <- as.data.frame(readxl::read_xls(file.name[1], col_types = "text"))
+  names(BIA) <- make.names(names(BIA))
+  #
+  # The app writes "Skeletal Muscle" and "Muscle Mass"; keep the old names
+  #
+  names(BIA)[names(BIA) == "Skeletal.Muscle"] <- "Skeletal.muscle"
+  names(BIA)[names(BIA) == "Muscle.Mass"]     <- "Muscle.mass"
+  #
+  # Add epoch. Date looks like "11:33 Dec.29,2020"
+  #
+  month_abbrev <- c("Jan","Feb","Mar","Apr","May","Jun",
+                    "Jul","Aug","Sep","Oct","Nov","Dec")
+  #
+  for (i in 1:nrow(BIA)) {
+    Month <- substr(BIA$Date[i], 7, 9)
+    Month <- match(Month, month_abbrev)
+    Year  <- substr(BIA$Date[i], nchar(BIA$Date[i]) - 3, nchar(BIA$Date[i]))
+    Day   <- substr(BIA$Date[i], 11, nchar(BIA$Date[i]) - 5)
+    BIA$date[i] <- epoch(paste(Month, Day, Year, sep = "/"), format = "MDY")
+  }
+  #
+  # Remove a few columns
+  #
+  BIA <- subset.data.frame(BIA, select = -Date)
+  BIA <- subset.data.frame(BIA, select = -Heart.Rate)
+  BIA <- subset.data.frame(BIA, select = -Cardiac.Index)
+  BIA <- subset.data.frame(BIA, select = -Body.age)
+  #
+  # Remove units of measure. Note [^0-9.] and not [^0-9]: the latter deletes
+  # the decimal point and turns 90.0kg into 900. Failed readings ("- -")
+  # become NA.
+  #
+  for (j in 1:ncol(BIA)) {
+    BIA[, j] <- gsub("[^0-9.]", "", as.character(BIA[, j]))
+    BIA[, j][BIA[, j] == "" | BIA[, j] == "."] <- NA
+    BIA[, j] <- as.numeric(BIA[, j])
+  }
+  #
+  BIA$Skeletal.muscle.mass  <- BIA$Skeletal.muscle  * BIA$Weight / 100
+  BIA$Subcutaneous.fat.mass <- BIA$Subcutaneous.fat * BIA$Weight / 100
+  BIA$Body.fat.mass         <- BIA$Body.Fat         * BIA$Weight / 100
+  BIA$Visceral.fat.mass     <- BIA$Body.fat.mass - BIA$Subcutaneous.fat.mass
+  #
+  # If more than one measure is present for the same day, keep only the first
+  #
+  BIA <- BIA[!duplicated(BIA$date), ]
+  #
+  for (j in 1:ncol(BIA)) {
+    BIA[, j] <- round(BIA[, j], digits = 3)
+  }
+  rownames(BIA) <- NULL
+  #
+  return(BIA)
+}
+#
+# Load and edit data from ShapeGanic app (macronitrients)
+# 
+ShapeGanic<-function() {
+  #
+  # Read the txt file with tabs 
+  #
+  current_dir<-getwd()
+  sub_dir<-"ShapeGanic"
+  folder_path<-file.path(current_dir,"Data",sub_dir)
+  file.name<-list.files(folder_path)
+  file.name<-paste0(folder_path,"/",file.name)
+  macro<-read.csv(file.name[1],header=T,sep=",")
+  if (length(file.name)>1) {
+    for (i in 2:length(file.name)) macro<-rbind(macro,read.csv(file.name[i],header=T,sep=","))
+  }
+  macro<-unique(macro)
+  #
+  # Add epoch
+  #
+  for (i in 1:nrow(macro)) {
+    macro$date[i]<-epoch(macro$Date[i],format="YMD")
+  }
+  #
+  # Calculate daily values
+  #
+  n.days<-length(unique(macro$date))
+  macro.daily<-data.frame(kcal=rep(NA,n.days),carbo.g=rep(NA,n.days),
+                          protein.g=rep(NA,n.days),fat.g=rep(NA,n.days),
+                          date=rep(NA,n.days))
+  for (i in 1:n.days) {
+    df<-subset.data.frame(macro,date==unique(macro$date)[i])
+    macro.daily$kcal[i]<-sum(df$Calories...Cal)
+    macro.daily$carbo.g[i]<-sum(df$Carbohydrates...g)
+    macro.daily$protein.g[i]<-sum(df$Protein...g)
+    macro.daily$fat.g[i]<-sum(df$Fats...g)
+    macro.daily$date[i]<-df$date[1]
+  }
+  #
+  # Remove days with less than 1000 kcal (likely missing data)
+  #
+  for (i in 1:nrow(macro.daily)) {
+    if (macro.daily$kcal[i]<1000) macro.daily[i,]<-rep(NA,ncol(macro.daily))
+  }
+  #
+  return(macro.daily)
+}
+#
+#---- Weight Lifting -----------------------------------------------------------
+#
+LiftME<-function(Score,BIA) {
+  #
+  # We need body weight
+  #
+  myweight<-BIA[c("date","Weight")]
+  myweight$Weight<-zoo::na.approx(myweight$Weight,maxgap=1000,na.rm=FALSE)
+  index<-which(is.na(myweight$Weight))
+  myweight$Weight[index]<-myweight$Weight[(index[1]-1)]
+  #
+  # Exercises with weight
+  #
+  exercises.1<-c("Barbell.Row","Dumbell.Row","Pull.Over","Pull.Ups","Chin.Ups",
+                 "Dumbell.Curl","Barbell.Curl","Barbell.Reverse.Curl",
+                 "Bench.Press","Flyes","Frontal.Rise","Overhead.Press",
+                 "Frontal.Rises","Lateral.Rises","Back.Rise","French.Press",
+                 "Triceps.Extension")
+  #
+  # Exercises without weight
+  #
+  exercises.2<-c("Chest.Dips","Triceps.Dips","Push.Ups","Hyperextension","Abs")
+  #
+  # Exercises with body weight plus plates
+  #
+  exercises.3<-"Squat"
+  #
+  # Fraction of body weight moved in exercises.2 and exercises.3
+  #
+  bw.coef<-c(Push.Ups=0.70,Chest.Dips=0.95,Triceps.Dips=0.95,
+             Hyperextension=0.68,Abs=0.40,Squat=0.88) 
+  #
+  # Calculate volume for type-one exercises 
+  #
+  mydata.1<-Score[c(exercises.1,"date")]
+  for (j in exercises.1) {
+    for (i in 1:nrow(mydata.1)) {
+      if (!is.na(mydata.1[[j]][i])) {
+        temp<-strsplit(mydata.1[[j]][i],"\\\\")
+        mydata.1[[j]][i]<-as.numeric(temp[[1]][1])*as.numeric(temp[[1]][2])  
+      }
+    }
+  }
+  #
+  # Calculate volume for type-two exercises 
+  #
+  mydata.2<-Score[c(exercises.2,"date")]
+  for (j in exercises.2) {
+    for (i in 1:nrow(mydata.2)) {
+      if (!is.na(mydata.2[[j]][i])) {
+        temp.1<-strsplit(as.character(mydata.2[[j]][i]),"\\\\")
+        if (length(temp.1[[1]])==1) {
+          temp.1<-as.numeric(temp.1[[1]])  
+        } else {
+          temp.1<-as.numeric(temp.1[[1]][1])
+        }
+        temp.2<-as.numeric(myweight$Weight[which(myweight$date==mydata.2$date[i])])
+        temp.2<-bw.coef[j]*temp.2
+        mydata.2[[j]][i]<-temp.1*temp.2
+      } 
+    }
+  }
+  #
+  # Calculate volume for type-three exercises 
+  #
+  mydata.3<-Score[c(exercises.3,"date")]
+  for (j in exercises.3) {
+    for (i in 1:nrow(mydata.3)) {
+      if (!is.na(mydata.3[[j]][i])) {
+        temp.1<-strsplit(mydata.3[[j]][i],"\\\\")
+        temp.2<-as.numeric(temp.1[[1]][1]) # repetitions
+        temp.3<-as.numeric(temp.1[[1]][2]) # plates
+        temp.4<-as.numeric(myweight$Weight[which(myweight$date==mydata.3$date[i])]) # body weight
+        temp.4<-bw.coef[j]*temp.4 # corrected body weight
+        mydata.3[[j]][i]<-temp.2*(temp.3+temp.4)
+      } 
+    }
+  }
+  #
+  # Merge data 
+  #
+  mydata<-merge(mydata.1,mydata.2,by="date",all=T)
+  mydata<-merge(mydata,mydata.3,by="date",all=T)
+  #
+  # As numeric 
+  #
+  for (j in c(exercises.1,exercises.2,exercises.3)) {
+    mydata[[j]]<-as.numeric(mydata[[j]])
+  }
+  #
+  # Add suffix to column names
+  #
+  for (j in 1:ncol(mydata)) {
+    if (colnames(mydata)[j]!="date") colnames(mydata)[j]<-paste0(colnames(mydata)[j],".vol")
+  }
+  #
+  # Calculate total volume
+  #
+  mydata$WL.vol<-rowSums(mydata[setdiff(names(mydata),"date")],na.rm=TRUE)
+  #
+  # Result
+  #
+  return(mydata)
 }
 #
 #---- Blood work ---------------------------------------------------------------

@@ -424,7 +424,7 @@ last.day<-epoch(Sys.Date(),"YMD")
 temp<-data.frame(date=seq(first.day,last.day,by=60*60*24))
 BIA<-merge.data.frame(temp,BIA,by.y="date",all.x=T)
 #
-# add missing days with splines and means
+# add missing days 
 #
 for (j in 2:ncol(BIA)) {
   BIA[,j]<-zoo::na.approx(BIA[,j],maxgap=60,na.rm=FALSE)
@@ -433,6 +433,10 @@ for (j in 2:ncol(BIA)) {
 #---- Data from ShapeGanic App -------------------------------------------------
 #
 macro<-ShapeGanic()
+#
+#---- Edit weight lifting data to calculate volume -----------------------------
+#
+myvolume<-LiftME(Score,BIA)
 #
 #---- Data from Black Globe thermometer (Tenmars, TM-188D) ---------------------
 #
@@ -588,6 +592,7 @@ fNIRS<-fNIRS_func(year)
 mydata<-merge.data.frame(Score,myHRVdata,by.y="date",all.x=T)
 mydata<-merge.data.frame(mydata,BIA,by.y="date",all.x=T)
 mydata<-merge.data.frame(mydata,macro,by.y="date",all.x=T)
+mydata<-merge.data.frame(mydata,myvolume,by.y="date",all.x=T)
 mydata<-merge.data.frame(mydata,BG,by.y="date",all.x=T)
 mydata<-merge.data.frame(mydata,Bresser.data,by.y="date",all.x=T)
 mydata<-merge.data.frame(mydata,OW.weather,by="date",all.x=T)
