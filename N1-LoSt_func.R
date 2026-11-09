@@ -1736,6 +1736,11 @@ LiftME<-function(Score,BIA) {
   index<-which(is.na(myweight$Weight))
   myweight$Weight[index]<-myweight$Weight[(index[1]-1)]
   #
+  # Only days with weight
+  #
+  end.date<-myweight$date[nrow(myweight)]
+  Score<-subset.data.frame(Score,date<=end.date)
+  #
   # Exercises with weight
   #
   exercises.1<-c("Barbell.Row","Dumbell.Row","Pull.Over","Pull.Ups","Chin.Ups",
