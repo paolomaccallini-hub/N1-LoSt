@@ -249,7 +249,7 @@ Steps_impute<-function(Score) {
   }
 }
 #
-#---- Mechanical work and PC activity-------------------------------------------
+#---- Mechanical work and PC activity ------------------------------------------
 #
 # It calculates mechanical work in a day
 #
@@ -516,6 +516,21 @@ LeanTest_func<-function(Score){
     colnames(mydata)[j]<-paste0("Delta.HR.",(j-1))
   }
   mydata.HR<-mydata[,-1] # remove first column
+  #
+  # regression coefficient Delta.HR
+  #
+  mydata.HR$Delta.HR.beta<-NA
+  for (i in 1:nrow(mydata.HR)) {
+    v<-as.vector(transpose(mydata.HR[i,1:10]))
+    df<-data.frame(time=seq(1,10,1),Delta.HR=v$V1)
+    model<-try(lm(Delta.HR~time,data=df),silent=T)
+    if (is.list(model)) {
+      beta<-model$coefficients[2]
+      if (!is.na(beta)) {
+        mydata.HR$Delta.HR.beta[i]<-beta
+      }
+    }
+  }
   #
   # deltas for Sys
   #
@@ -1202,19 +1217,22 @@ EEG_func<-function() {
   Channels<-c("RAW_TP9","RAW_AF7","RAW_AF8","RAW_TP10")
   hour_co<-17
   eeg.data<-list()
+  EEG.hour<-c()
   k<-1
   for (i in 1:days) {
     day<-substr(file_names[i],13,22)
-    hour<-substr(file_names[i],25,26)
-    if (as.numeric(hour)<hour_co) { 
+    hour<-as.numeric(substr(file_names[i],25,26))
+    if (hour<hour_co) { 
       if (!day%in%names(eeg.data)) { # only one reading for day
         eeg.data[[k]]<-setDF(fread(file.path(folder_path,file_names[i]),
                                    select=c("TimeStamp",Channels,"Elements")))
         names(eeg.data)[k]<-substr(eeg.data[[k]][1,1],1,10) # name is the date as YYYY-MM-DD
+        EEG.hour[k]<-hour
         k<-k+1
       }
     } 
   }
+  hours<-data.frame(date=names(eeg.data),EEG.hour=EEG.hour)
   days<-length(eeg.data)
   #
   # Arrays for Frequency analysis
@@ -1346,6 +1364,11 @@ EEG_func<-function() {
     mydata$Gamma_R[i]<-mydata$AF8_gamma[i]+mydata$TP10_gamma[i]
   }
   #
+  # Add hour
+  #
+  for (i in 1:nrow(hours)) hours$date[i]<-epoch(hours$date[i],"YMD")
+  mydata<-merge(mydata,hours,by="date",all.x=TRUE)
+  #
   # Results
   #
   return(mydata)
@@ -1437,11 +1460,12 @@ fNIRS_func<-function(year) {
   #
   hour_co<-17
   fNIRS.data<-list()
+  fNIRS.hour<-c()
   k<-1
   for (i in 1:days) {
     day<-substr(file_names[i],13,22)
-    hour<-substr(file_names[i],25,26)
-    if (as.numeric(hour)<hour_co) { 
+    hour<-as.numeric(substr(file_names[i],25,26))
+    if (hour<hour_co) { 
       if (!day%in%names(fNIRS.data)) { # only one reading for day
         temp<-fread(file.path(folder_path,file_names[i]),header=T,sep=",")
         test<-sum(temp$Optics9,na.rm=T)
@@ -1458,11 +1482,13 @@ fNIRS_func<-function(year) {
           #
           fNIRS.data[[k]]<-temp
           names(fNIRS.data)[k]<-name
+          fNIRS.hour[k]<-hour
           k<-k+1  
         }
       }
     } 
   }
+  hours<-data.frame(date=names(fNIRS.data),fNIRS.hour=fNIRS.hour)
   days<-length(fNIRS.data)
   #
   # Plot regressions and correlations of intensities for one recording
@@ -1686,6 +1712,11 @@ fNIRS_func<-function(year) {
   myconc$Outer.HbDiff<-myconc$L.Outer.HbDiff+myconc$R.Outer.HbDiff
   myconc$Inner.HbTot<-myconc$L.Inner.HbTot+myconc$R.Inner.HbTot
   myconc$Inner.HbDiff<-myconc$L.Inner.HbDiff+myconc$R.Inner.HbDiff
+  #
+  # Add hour
+  #
+  for (i in 1:nrow(hours)) hours$date[i]<-epoch(hours$date[i],"YMD")
+  myconc<-merge(myconc,hours,by="date",all.x=TRUE)
   #
   # Results
   #
@@ -1953,6 +1984,196 @@ Data.plot<-function(mydata,nd,variables,start,end,folder_path,type,detrend=F,sca
          lwd=rep(3,(NC-1)),lty=rep(1,(NC-1)),xpd = TRUE,
          inset = c(-0.1, 0))
   dev.off()
+}
+#
+#---- Autocorrelation, FFT, decomposition, forecast ----------------------------
+#
+# Time-series analysis of an outcome variable: autocorrelation, Fourier analysis,
+# decompositions (additive, multiplicative, STL) and Holt-Winters forecast with
+# validation.
+#
+# mydata:  daily data with a 'date' column (epoch) and the outcome column
+# exit.v:  name of the outcome variable (e.g. "Score_m")
+# start:   first day of the analysis ("YYYY-MM-DD")
+# maxgap:  longest gap (days) filled by linear interpolation
+# window:  window (days) of the loess trend removed before the Fourier analysis
+# n.harm:  number of strongest harmonics used to reconstruct the signal
+# ar.max:  maximum order of the autoregressive model (order chosen by AIC)
+#
+Outcome_analysis<-function(mydata,exit.v,start="2021-03-01",maxgap=10,
+                           window=3*365,n.harm=10,ar.max=30) {
+  #
+  # Output folder
+  #
+  folder_path<-file.path(current_dir,"Output","Outcome_analysis",exit.v)
+  if (!dir.exists(folder_path)) dir.create(folder_path,recursive=TRUE)
+  #
+  # Select period, remove last day (possibly incomplete), impute short gaps
+  #
+  mydata<-subset.data.frame(mydata,date>=as.numeric(epoch(start,"YMD")))
+  mydata<-mydata[1:(nrow(mydata)-1),]
+  x<-zoo::na.approx(mydata[[exit.v]],maxgap=maxgap,na.rm=FALSE)
+  #
+  # Leading and trailing NAs cannot be interpolated: remove them
+  #
+  ok<-which(!is.na(x))
+  keep<-min(ok):max(ok)
+  x<-x[keep]
+  dates<-mydata$date[keep]
+  if (anyNA(x)) stop("gaps longer than maxgap remain in ",exit.v,": increase maxgap")
+  m<-length(x)
+  t<-seq_len(m)
+  first.day<-HRD(dates[1])
+  #
+  #--- Autocorrelation ---------------------------------------------------------
+  #
+  x.ts<-ts(x,frequency=1)
+  for (LM in c(100,200,300,400)) {
+    file.name<-file.path(folder_path,paste0("autocorrelation_",exit.v,"_lag",LM,".jpeg"))
+    jpeg(file.name,quality=100,res=100,width=1000,height=500)
+    par(mfrow=c(1,2))
+    acf(x.ts,lwd=2,lag.max=LM,main=exit.v) # autocorrelation
+    pacf(x.ts,lwd=2,lag.max=round(LM/2),main=exit.v) # partial autocorrelation
+    dev.off()
+  }
+  #
+  #--- Remove trend (used by the AR model and the Fourier analysis) ------------
+  #
+  xd<-residuals(loess(x~t,span=window/m)) # remove trend over 'window' days
+  #
+  #--- Autoregressive model of the detrended signal ----------------------------
+  #
+  fit.ar<-ar(xd,order.max=ar.max,aic=TRUE) # order chosen by AIC
+  p<-fit.ar$order
+  phi<-fit.ar$ar
+  res<-fit.ar$resid
+  lb<-Box.test(res,lag=max(20,2*p),type="Ljung-Box",fitdf=p) # whiteness of residuals
+  #
+  file.name<-file.path(folder_path,paste0("AR_model_",exit.v,".jpeg"))
+  jpeg(file.name,quality=100,res=100,width=1200,height=800)
+  par(mfrow=c(2,2))
+  plot(0:ar.max,fit.ar$aic,type="b",pch=19,xlab="order",ylab="AIC - min(AIC)",
+       main=paste("AIC by order (chosen order:",p,")"))
+  abline(v=p,lty=2,col="red")
+  if (p>0) {
+    barplot(phi,names.arg=1:p,xlab="lag (days)",ylab="coefficient",col="steelblue",
+            main=paste0("AR coefficients (sum = ",round(sum(phi),2),")"))
+    abline(h=0)
+  } else {
+    plot.new(); title(main="order 0: no autoregressive structure")
+  }
+  plot(t,res,type="l",xlab="time (days)",ylab="residual",main="AR residuals")
+  acf(na.omit(res),lag.max=60,main=paste0("ACF of residuals (Ljung-Box p = ",
+                                          sprintf("%.2g",lb$p.value),")"))
+  dev.off()
+  #
+  if (p>0) {
+    file.name<-file.path(folder_path,paste0("AR_coefficients_",exit.v,".csv"))
+    write.csv(data.frame(lag=1:p,coefficient=phi),file.name,row.names=FALSE)
+  }
+  #
+  #--- Fourier analysis of the detrended signal --------------------------------
+  #
+  X<-fft(xd)
+  fs<-365 # sampling frequency (measures/year)
+  fr<-(0:(m-1))*fs/m # frequencies (cycles/year)
+  power<-(abs(X)^2)/m
+  half<-power[1:round(m/2)]
+  positions<-order(-half)[1:n.harm] # strongest harmonics
+  #
+  # Reconstruct the signal from the strongest harmonics
+  #
+  xr<-rep(0,m)
+  for (k in positions) {
+    kf<-k-1 # 0-based frequency index
+    fac<-if (kf==0 || (m%%2==0 && kf==m/2)) 1 else 2 # DC and Nyquist not doubled
+    xr<-xr+(fac/m)*abs(X[k])*cos(2*pi*(t-1)*kf/m+Arg(X[k]))
+  }
+  #
+  top<-positions[positions>1][1] # strongest harmonic, excluding frequency 0
+  period<-round(fs/fr[top]) # its period (days)
+  #
+  file.name<-file.path(folder_path,paste0("fourier_",exit.v,".jpeg"))
+  jpeg(file.name,quality=100,res=100,width=1000,height=1000)
+  par(mfrow=c(2,1))
+  plot(t,xd,type="l",lwd=1,xlab="time (days)",ylab=paste(exit.v,"(detrended)"),
+       main=paste("Detrended signal and reconstruction from",n.harm,"harmonics"))
+  lines(t,xr,lwd=3,col="red")
+  max.x<-max(positions)
+  max.y<-max(half[-1])*1.05
+  plot(fr,power,type="l",lwd=2,xlab="frequency (cycles/year)",ylab="power",
+       xlim=c(fr[2],fr[max.x]),ylim=c(0,max.y))
+  # abline(v=1:floor(fr[max.x]),lty=2)
+  legend("topright",bty="n",legend=paste0("top frequency: ",round(fr[top],3),
+                                          " cycles/year (period ",period," days)"))
+  dev.off()
+  #
+  #--- Decompositions, with the period of the strongest harmonic ---------------
+  #
+  y.ts<-ts(x,start=c(1,1),frequency=period)
+  str<-paste("Periods of",period,"days from",first.day)
+  #
+  if (length(y.ts)>=2*period) {
+    #
+    file.name<-file.path(folder_path,paste0("additive_decomposition_",exit.v,".jpeg"))
+    jpeg(file.name,quality=100,res=100,width=1000,height=1000)
+    plot(stats::decompose(y.ts,type="additive"),xlab=str)
+    dev.off()
+    #
+    if (all(x>0)) { # multiplicative decomposition needs positive values
+      file.name<-file.path(folder_path,paste0("multiplicative_decomposition_",exit.v,".jpeg"))
+      jpeg(file.name,quality=100,res=100,width=1000,height=1000)
+      plot(stats::decompose(y.ts,type="multiplicative"),xlab=str)
+      dev.off()
+    }
+    #
+    file.name<-file.path(folder_path,paste0("STL_decomposition_",exit.v,".jpeg"))
+    jpeg(file.name,quality=100,res=100,width=1000,height=1000)
+    plot(stl(y.ts,s.window="periodic"),main=str)
+    dev.off()
+  } else {
+    warning("series shorter than two periods: decompositions skipped")
+  }
+  #
+  #--- Holt-Winters: fit, forecast and validation ------------------------------
+  #
+  hw.ok<-length(y.ts)>=3*period # training set must still hold two periods
+  if (hw.ok) {
+    hw<-HoltWinters(y.ts)
+    file.name<-file.path(folder_path,paste0("holt_winters_",exit.v,".jpeg"))
+    jpeg(file.name,quality=100,res=100,width=1000,height=500)
+    plot(hw,predict(hw,period),xlab=str)
+    dev.off()
+    #
+    # Validation: forecast the last period from the previous data
+    #
+    h<-period
+    n<-length(y.ts)
+    train<-window(y.ts,end=time(y.ts)[n-h])
+    test<-as.numeric(window(y.ts,start=time(y.ts)[n-h+1]))
+    pred<-as.numeric(predict(HoltWinters(train),h))
+    model<-lm(test~pred)
+    s<-summary(model)
+    pval<-pf(s$fstatistic[1],s$fstatistic[2],s$fstatistic[3],lower.tail=FALSE)
+    #
+    file.name<-file.path(folder_path,paste0("holt_winters_validation_",exit.v,".jpeg"))
+    jpeg(file.name,quality=100,res=100,width=800,height=800)
+    plot(pred,test,xlab="predicted values",ylab="observed values",pch=19)
+    abline(model,lwd=3,col="red")
+    title(main=paste0("R2_adj = ",sprintf("%.5f",s$adj.r.squared),
+                      ", p val = ",sprintf("%.2e",pval)))
+    dev.off()
+  } else {
+    warning("series shorter than three periods: Holt-Winters skipped")
+  }
+  #
+  # Results
+  #
+  ar.coef<-if (p>0) data.frame(lag=1:p,coefficient=phi) else data.frame(lag=integer(0),coefficient=numeric(0))
+  invisible(list(period=period,top.frequency=fr[top],first.day=first.day,
+                 n.days=m,harmonics=fr[positions],
+                 ar.order=p,ar.coefficients=ar.coef,ar.sum=sum(phi),
+                 ljung.box.p=lb$p.value))
 }
 #
 #---- Statistics ---------------------------------------------------------------
@@ -2599,10 +2820,7 @@ CoReRaPCA<-function(mydata,exit.v,data.select,nd) {
   #
   # Convert exit.v into a variable with three levels: 0 (< Q1), 1 (Q1-Q3), 2 (>= Q3)
   #
-  x<-mydata[[exit.v]]
-  q<-quantile(x,c(0.25,0.75),na.rm=T)
-  if (q[1]==q[2]) stop(exit.v,": first and third quartiles coincide, three levels not possible")
-  mydata$exit.v.o<-findInterval(x,q)
+  mydata[[exit.v]]<-as.integer(mydata[[exit.v]]>=mean(mydata[[exit.v]],na.rm=T))
   #
   folder<-"Output/Radar"
   folder_path<-file.path(current_dir,folder)  
@@ -2619,14 +2837,15 @@ CoReRaPCA<-function(mydata,exit.v,data.select,nd) {
 # exit.vs = one or more exit variables
 # covariates = all the covariates (interactions with * are admitted)
 # type = either "marginal" or "multinomial"
-# alpha = cut off for significance
+# alpha = cut off for significance, default is 0.05
 # data.selec = a string that will be used to build the dedicated folders
 # days = a vector of days used for regression against weighted covariates (see methods)
 # family = either "binomial" or "gaussian" or both (as a vector)
+# unit.t = number of days for the non-overlapping moving mean, default is 1
 #
 DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
-                  data.select=NA,days=c(0,1,8,16,32),
-                  family=c("binomial","gaussian")) {
+                  data.select=NA,days,family=c("binomial","gaussian"),
+                  unit.t=1) {
   #
   # Create output folders, if not present
   #
@@ -2656,7 +2875,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
   #
   # Linear degrading effect of covariates
   #
-  MAXnd<-32 # we assume that the effects of covariates degrades linearly and is zero ta day MAXnd 
+  MAXnd<-32 # we assume that the effects of covariates degrades linearly and is zero at day MAXnd 
   days<-days[days<=MAXnd]
   #
   # Are there any interactions among covariates?
@@ -2683,10 +2902,14 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
   #
   NC<-length(covariates)
   results<-matrix(NA,nrow=NC,ncol=(length(days)+5))
-  colnames(results)<-c("variable",days,"days on","days off","size","sd/mean")
+  if (unit.t>1) {
+    colnames(results)<-c("variable",days,"units on","units off","size","sd/mean")  
+  } else {
+    colnames(results)<-c("variable",days,"days on","days off","size","sd/mean")
+  }
   results[,1]<-covariates
   #
-  # Add days on, days off, and coefficient of variance 
+  # Add units on, units off, and coefficient of variance 
   #
   for (j in 1:NC) { 
     #
@@ -2724,7 +2947,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
     #
     # Clear folder from previous run
     #
-    exit_path<-file.path(folder_path,exit.v)
+    exit_path<-file.path(folder_path,paste0(exit.v,"_",unit.t))
     if (dir.exists(exit_path)) unlink(exit_path,recursive=T)
     dir.create(exit_path)
     #
@@ -2734,6 +2957,17 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
     mydata[[exit.v]]<-mydata0[[exit.v]]
     temp<-setdiff(covariates,exit.v)
     mydata<-subset.data.frame(mydata,select=c(temp,exit.v))
+    #
+    # Non-overlapping moving mean and remove NaN
+    #
+    if (unit.t>1) {
+      mydata2<-mydata[seq(unit.t,nrow(mydata),by=unit.t),]
+      for (j in 1:ncol(mydata)) {
+        mydata2[,j]<-runner(mydata[,j],k=unit.t,at=seq(unit.t,nrow(mydata),by=unit.t),
+                            f=function(x) mean(x,na.rm=TRUE)) 
+      }
+      mydata<-mydata2 
+    }
     #
     # Edit matrices for results
     #
@@ -2748,16 +2982,15 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
     y.d<-residuals(lm(y~tt,na.action=na.exclude))
     nlag<-ar(y.d,order.max=30,na.action=na.pass)$order
     message(exit.v,": ",nlag," lags")
-    writeLines(as.character(nlag),file.path(folder_path,exit.v,"n_lags.txt"))
+    writeLines(as.character(nlag),file.path(exit_path,"n_lags.txt"))
     #
     # Scale exit.v
     #
     mydata[[exit.v]]<-as.numeric(scale(mydata[[exit.v]]))
     #
-    # Convert exit.v into a binary variable: 1 for the upper quartile, 0 otherwise
+    # Convert exit.v into a binary variable
     #
-    q.up<-quantile(mydata[[exit.v]],0.75,na.rm=T)
-    mydata$exit.v.b<-as.integer(mydata[[exit.v]]>=q.up)
+    mydata$exit.v.b<-as.integer(mydata[[exit.v]]>=mean(mydata[[exit.v]],na.rm=T))
     #
     # Regressions 
     #
@@ -2885,19 +3118,23 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
           #
           # Plot nominally significant regressions
           #
-          if(!dir.exists(file.path(folder_path,exit.v,"plots_nominal"))) {
-            dir.create(file.path(folder_path,exit.v,"plots_nominal")) 
+          if(!dir.exists(file.path(exit_path,"plots_nominal"))) {
+            dir.create(file.path(exit_path,"plots_nominal")) 
           }
           v<-p.mat[j,(index+1)]
           if (!is.na(v) && !(v %in% c("NS","NE"))) {
             p1<-as.numeric(p.mat[j,(index+1)])
             if (p1<alpha) {
-              file.name<-paste0(exit.v,"_",colnames(mydata2)[j],"_",nd,"_",fam,".png")
-              file.name<-file.path(folder_path,exit.v,"plots_nominal",file.name)
+              file.name<-paste0(exit.v,"_",colnames(mydata2)[j],"_",nd,"_",fam,"_",unit.t,".png")
+              file.name<-file.path(exit_path,"plots_nominal",file.name)
               png(file.name,width=800,height=400)
               a<-try(crPlots(model,terms=colnames(mydata2)[j],ylab=exit.v),silent=T)
               if (!inherits(a,"try-error")) {
-                title(main=paste0("Dynamic regression for ",nd," days (",fam,")"))
+                if (unit.t>1) {
+                  title(main=paste0("Dynamic regression for ",nd," units of ",unit.t," days (",fam,")"))  
+                } else {
+                  title(main=paste0("Dynamic regression for ",nd," days (",fam,")"))
+                }
               }
               dev.off()
               if (inherits(a,"try-error")) unlink(file.name)
@@ -2928,7 +3165,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
         nr<-nrow(lp)
         n.col<-ceiling(sqrt(nr))
         n.row<-ceiling(nr/n.col)
-        file.name<-file.path(folder_path,exit.v,paste0(type,"_log10P_BH_",exit.v,"_",fam,".png"))
+        file.name<-file.path(exit_path,paste0(type,"_log10P_BH_",exit.v,"_",fam,"_",unit.t,".png"))
         png(file.name,width=4*n.col,height=3.3*n.row,units="in",res=300)
         par(mfrow=c(n.row,n.col),mar=c(4,4,3,1),oma=c(0,0,3,0))
         for (i in 1:nr) {
@@ -2936,7 +3173,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
           h[is.na(h)]<-0 # models not estimated: no bar
           ym<-max(c(abs(h),-log10(alpha)),na.rm=TRUE)*1.1 # own scale for each panel, 10% margin
           barplot(h,names.arg=days,ylim=c(-ym,ym),main=p.mat.all[i,1],
-                  xlab="days",ylab="signed -log10(p)",col=ifelse(h>=0,"steelblue","firebrick"))
+                  xlab=paste("units of",unit.t,"days"),ylab="signed -log10(p)",col=ifelse(h>=0,"steelblue","firebrick"))
           abline(h=0)
           abline(h=c(-1,1)*-log10(alpha),col="red",lty=2)
         }
@@ -2946,12 +3183,12 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
       #
       # Save
       #
-      file.name<-paste0(type,"_reg_coeff_",exit.v,"_",fam,".csv")
-      file.name<-file.path(folder_path,exit.v,file.name)
+      file.name<-paste0(type,"_reg_coeff_",exit.v,"_",fam,"_",unit.t,".csv")
+      file.name<-file.path(exit_path,file.name)
       write.table(myresults,file=file.name,quote=F,row.names=F,col.names=T,sep=",")
       #
-      file.name<-paste0(type,"_pval_",exit.v,"_",fam,".csv")
-      file.name<-file.path(folder_path,exit.v,file.name)
+      file.name<-paste0(type,"_pval_",exit.v,"_",fam,"_",unit.t,".csv")
+      file.name<-file.path(exit_path,file.name)
       write.table(p.mat,file=file.name,quote=F,row.names=F,col.names=T,sep=",")
     }
   }
@@ -2959,16 +3196,20 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
 #
 #---- Retrieve data to plug in the LaTeX script of the paper--------------------
 #
+# This function finds the day of the first available measure, the day of the last
+# measure, and the measures not-NA in between
+#
+span<-function(df,v) {
+  d<-mydata$date[!is.na(mydata[[v]])]
+  c(HRD(min(d)),HRD(max(d)),length(d))
+}
+#
+# This retrieve start, end, and number of measures and write them for the LaTeX code
+#
 mynumbers<-function(mydata) {
-  old.locale<-Sys.getlocale("LC_TIME")
-  Sys.setlocale("LC_TIME","C") # English month names
   #
-  span<-function(df,v) {
-    d<-mydata$date[!is.na(mydata[[v]])]
-    c(format(as.Date(HRD(min(d))),"%d %B %Y"),
-      format(as.Date(HRD(max(d))),"%d %B %Y"),
-      length(d))
-  }
+  # retrieve start, end, and number of measures
+  #
   eeg<-span(mydata,"Alpha")
   nirs<-span(mydata,"L.Outer.Hb")
   hrv<-span(mydata,"SDNN")
@@ -2988,5 +3229,4 @@ mynumbers<-function(mydata) {
     paste0("\\newcommand{\\biaDays}{",bia[3],"}")),
     file.path("Output","paper_numbers.tex"))
   #
-  Sys.setlocale("LC_TIME",old.locale) # back to Italian
 }

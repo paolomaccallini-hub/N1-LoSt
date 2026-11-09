@@ -32,7 +32,7 @@ Plot_Hist(mydata,folder_path)
 folder_path<-file.path("Output","Tables") 
 results<-Table_results(mydata,folder_path)
 #
-#---- Study of Score (main exit variable) --------------------------------------
+#---- Study of exit variables --------------------------------------------------
 #
 ##--- Plot normalized time series-----------------------------------------------
 #
@@ -51,174 +51,24 @@ type<-"scores"
 nd<-30
 Data.plot(mydata,nd,variables,start,end,folder_path,type)
 #
-##--- Autocorrelation ----------------------------------------------------------
+# Run decomposition, autocorrelation, Holt-Winters forecast and FFT
 #
-folder_path<-file.path(current_dir,"Output","Score_analysis") 
-#
-# Read
-#
-file.name<-"Output/all_daily_data.csv"
-mydata<-read.csv(file.name,header=T,sep=",")
-mydata<-subset.data.frame(mydata,date>=as.integer(epoch("2021-03-01","YMD")))
-mydata<-mydata[1:(nrow(mydata)-1),] # remove last day
-#
-# Impute missing values for Score_m
-#
-mydata$Score_m<-zoo::na.approx(mydata$Score_m,maxgap=10,na.rm=FALSE)
-#
-# Autocorrelation
-#
-Score_m.ts<-ts(mydata$Score_m,frequency=1) # transform outcome in a ts object
-for (LM in c(100,200,300,400)) {
-  file.name<-paste0("autocorrelation_Score_m_lag",LM,".jpeg")  
-  file.name<-file.path(folder_path,file.name)
-  jpeg(file.name,quality=100,res=100,width=1000,height=500)
-  par(mfrow=c(1,2))
-  acf(Score_m.ts,lwd=2,lag.max=LM) # autocorrelation
-  pacf(Score_m.ts,lwd=2,lag.max=round(LM/2)) # autocorrelation corrected for previous lags (partial acf)
-  dev.off()
-}
-#
-##--- Fast Fourier Transform and Decomposition ---------------------------------
-#
-folder_path<-file.path(current_dir,"Output","Score_analysis") 
-if(!dir.exists(folder_path)) {
-  dir.create(folder_path) # create the folder for histograms if it is not present
-}
-#
-# Read
-#
-file.name<-"Output/all_daily_data.csv"
-mydata<-read.csv(file.name,header=T,sep=",")
-mydata<-subset.data.frame(mydata,date>=as.integer(epoch("2021-03-01","YMD")))
-mydata<-mydata[1:(nrow(mydata)-1),] # remove last day
-#
-# Impute missing values for Score_m
-#
-x<-zoo::na.approx(mydata$Score_m,maxgap=10,na.rm=FALSE)
-#
-# Remove trend
-#
-t<-seq(1,(length(x)),by=1)
-window<-3*365 # trend window in days
-x<-residuals(loess(x~t,span=window/length(x))) # remove trend over three years 
-#
-# FFT
-#
-X<-fft(x)
-m<-length(x)
-fs<-365 # frequency: measures/year
-fr<-c(0:(m-1))*fs/m # frequency range
-power<-(abs(X)^2)/m # power
-#
-xr<-c() # reconstructed signal
-vector<-power[1:round(length(power)/2)]
-positions<-order(-vector)[1:10] # take indexes with first 10 more powerful harmonics 
-for (i in 1:length(t)) { 
-  xr[i]<-0
-  for (k in positions) {
-    kf<-k-1                                          # 0-based frequency index
-    fac<-if (kf==0 || (m%%2==0 && kf==m/2)) 1 else 2 # DC/Nyquist not doubled
-    xr[i]<-xr[i]+(fac/m)*abs(X[k])*cos(2*pi*(t[i]-1)*kf/m+Arg(X[k]))
-  }
-}
-#
-# Plot both the reconstructed signal form main harmonics and periodogram
-#
-file.name<-"fourier.jpeg"
-file.name<-file.path(folder_path,file.name)
-jpeg(file.name,quality=100,res=100,width=1000,height=1000)
-par(mfrow=c(2,1))
-y.lim<-c(min(x),max(x))
-plot(t[1:length(x)],x,type="l",lwd=1,
-     xlim=c(1,length(t)),ylim=y.lim,xlab="time (days)",ylab="signal",col="black")
-par(new=T)
-plot(t,xr,type="l",lwd=3,
-     xlim=c(1,length(t)),ylim=y.lim,xlab="",ylab="",col="red")
-max.x<-max(positions)
-max.y<-max(vector[-1])
-max.y<-max.y+max.y/20
-plot(fr,power,type="l",lwd=2,xlab="frequency (cycle/year)",xlim=c(fr[2],fr[max.x]),
-     ylim=c(0,max.y)) 
-abline(v=c(1:fr[max.x]),col="black",lty=2,lwd=1)
-top<-positions[positions>1][1] # strongest harmonic, excluding frequency 0
-legend("topright",bty="n",legend=paste0("top frequency: ",round(fr[top],3)," cycles/year",
-                                        " (period ",round(fs/fr[top])," days)"))
-dev.off()  
-#
-##--- Decomposition of score (you need to run the FTT code first!) -------------
-#
-# Impute missing values for Score_m
-#
-x<-zoo::na.approx(mydata$Score_m,maxgap=10,na.rm=FALSE)
-#
-# Generate time series: assume as period the one of the strongest harmonic 
-#
-period<-round(fs/fr[top])
-score.ts<-ts(data=x,start=c(1,1),frequency=period)
-str<-paste("Periods of",period,"days from",HRD(mydata$date[1]))
-#
-# Additive decomposition
-#
-x<-stats::decompose(score.ts,type="additive")
-file.name<-"Additive decomposition.jpeg"
-file.name<-file.path(folder_path,file.name)
-jpeg(file.name,quality=100,res=100,width=1000,height=1000)
-plot(x,xlab=str)
-dev.off()
-#
-# Multiplicative decomposition
-#
-x<-stats::decompose(score.ts,type="multiplicative")
-file.name<-"Multiplicative decomposition.jpeg"
-file.name<-file.path(folder_path,file.name)
-jpeg(file.name,quality=100,res=100,width=1000,height=1000)
-plot(x,xlab=str)
-dev.off()
-#
-# Seasonal and Trend decomposition using Loess (LOcally Estimated Scatterplot Smoothing)
-#
-x<-stl(score.ts,s.window="periodic")
-file.name<-"STL_decomposition.jpeg"
-file.name<-file.path(folder_path,file.name)
-jpeg(file.name,quality=100,res=100,width=1000,height=1000)
-plot(x)
-title(str)
-dev.off()
-#
-# Holt-Winters decomposition using exponential smoothing and forecast
-#
-x<-HoltWinters(score.ts)
-file.name<-"holt_winters.jpeg"
-file.name<-file.path(folder_path,file.name)
-jpeg(file.name,quality=100,res=100,width=1000,height=500)
-plot(x,predict(x,period),xlab=str)
-dev.off()
-#
-# Holt-Winters forecast validation
-#
-h<-period # days to forecast
-n<-length(score.ts)
-train<-window(score.ts,end=time(score.ts)[n-h])
-test<-as.numeric(window(score.ts,start=time(score.ts)[n-h+1]))
-hw<-HoltWinters(train)
-pred.hw<-as.numeric(predict(hw,h))
-model<-lm(test~pred.hw)
-#
-file.name<-"holt_winters_validation.jpeg"
-file.name<-file.path(folder_path,file.name)
-jpeg(file.name,quality=100,res=100,width=800,height=800)
-plot(test,pred.hw,xlab="predicted values",ylab="values",pch=19)
-abline(model,lwd=3,col="red")
-r2adj<-summary(model)$adj.r.squared
-TS<-summary(model)$fstatistic[1]
-df1<-summary(model)$fstatistic[2]
-df2<-summary(model)$fstatistic[3]
-pval<-pf(TS,df1=df1,df2=df2,lower.tail=F)
-str_r2adj<-sprintf(paste0("%.",5,"f"),r2adj)
-str_pval<-sprintf("%.2e",pval)
-title(main=paste("R2_adj=",str_r2adj,",p val=",str_pval))
-dev.off()
+Outcome_analysis(mydata,exit.v="Score_m",start="2021-03-01",maxgap=10,
+                 window=3*365,n.harm=10)
+Outcome_analysis(mydata,exit.v="Score_T",start="2021-03-01",maxgap=10,
+                 window=3*365,n.harm=10)
+Outcome_analysis(mydata,exit.v="notafk",start=span(mydata,"notafk")[1],maxgap=10,
+                 window=3*365,n.harm=10)
+Outcome_analysis(mydata,exit.v="Steps.C",start=span(mydata,"Steps.C")[1],maxgap=10,
+                 window=3*365,n.harm=10)
+Outcome_analysis(mydata,exit.v="Alpha",start=span(mydata,"Alpha")[1],maxgap=10,
+                 window=3*365,n.harm=10)
+Outcome_analysis(mydata,exit.v="Sys",start="2023-06-29",maxgap=10,
+                 window=3*365,n.harm=10)
+Outcome_analysis(mydata,exit.v="Dia",start="2023-06-29",maxgap=10,
+                 window=3*365,n.harm=10)
+Outcome_analysis(mydata,exit.v="HR",start="2023-06-29",maxgap=10,
+                 window=3*365,n.harm=10)
 #
 ##--- Search for differences in monthly scores ---------------------------------
 #
@@ -256,7 +106,7 @@ for (score in c("Score_m","Score_T","Steps","notafk")) {
   dev.off()
 }
 #
-##--- Good days bye year -------------------------------------------------------
+##--- Good days by year -------------------------------------------------------
 #
 file.name<-"Output/all_daily_data.csv"
 mydata<-read.csv(file.name,header=T,sep=",")
@@ -467,6 +317,8 @@ Data.plot(mydata,nd,variables,start,end,folder_path,type)
 #
 #---- Study of lean test -------------------------------------------------------
 #
+##--- General plotting ---------------------------------------------------------
+#
 # Read
 #
 file.name<-"Output/all_daily_data.csv"
@@ -567,9 +419,269 @@ data.select="Cardiac Power"
 deg<-2
 LeanTest_plot(mydata,data.select,deg)     
 #
+##--- Study of positivity to POTS and/or OI ------------------------------------
+#
+# Function for plotting
+#
+pots.bar<-function(y,lab,ylab,main,file.name) {
+  jpeg(file.path("Output","LeanTest",file.name),quality=100,res=100,width=800,height=800)
+  ymax<-max(y,na.rm=TRUE)+10
+  bp<-barplot(y,names.arg=1:10,xlab="minute",ylab=ylab,ylim=c(0,ymax),
+              col=NA,border=NA) # empty plot: axes and positions only
+  abline(h=seq(0,round(ymax),by=5),col="grey85") # horizontal grid
+  barplot(y,ylim=c(0,ymax),add=TRUE,axes=FALSE,axisnames=FALSE) # bars over the grid
+  text(bp,y+2,labels=lab,col="red")
+  title(main=main,cex.main=0.9)
+  dev.off()
+}
+#
+# Number of POTS positive lean tests by minute of standing
+#
+variables<-c("Delta.HR.1","Delta.HR.2","Delta.HR.3","Delta.HR.4","Delta.HR.5",
+             "Delta.HR.6","Delta.HR.7","Delta.HR.8","Delta.HR.9","Delta.HR.10")
+mydata<-subset.data.frame(mydata0,select=variables)
+x<-as.matrix(mydata)
+last<-apply(!is.na(x),1,function(v) if (any(v)) max(which(v)) else 0) # test duration (minutes)
+run.max<-t(apply(x,1,function(v) cummax(ifelse(is.na(v),-Inf,v)))) # max Delta HR up to each minute
+count.TOT<-sapply(1:10,function(m) sum(last>=m)) # tests lasting at least m minutes
+count.POS<-sapply(1:10,function(m) sum(last>=m & run.max[,m]>=30)) # ...and positive by minute m
+count.PER<-round(100*count.POS/count.TOT)
+Lab<-paste0(count.POS,"/",count.TOT)
+#
+pots.bar(count.PER,Lab,"Max Delta HR >= 30 bpm (%)",
+         "N of positive lean tests at minute m / total available lean tests at minute m",
+         "POTS_positive_by_duration.jpeg")
+#
+# Sensitivity of measure at each minute for positive lean tests of 10 minutes
+#
+mydata<-subset.data.frame(mydata0,!is.na(Delta.HR.10)) # only 10-minute lean tests
+mydata<-subset.data.frame(mydata,max.Delta.HR>=30) # only positive 10-minute lean tests
+mydata<-subset.data.frame(mydata,select=variables)
+x<-as.matrix(mydata)
+last<-apply(!is.na(x),1,function(v) if (any(v)) max(which(v)) else 0) # test duration (minutes)
+run.max<-t(apply(x,1,function(v) cummax(ifelse(is.na(v),-Inf,v)))) # max Delta HR up to each minute
+count.POS<-sapply(1:10,function(m) sum(last>=m & run.max[,m]>=30)) # ...and positive by minute m
+count.TOT<-rep(nrow(mydata),10)
+count.PER<-round(100*count.POS/count.TOT)
+Lab<-paste0(count.POS,"/",count.TOT)
+#
+pots.bar(count.PER,Lab,"Max Delta HR >= 30 bpm (%)",
+         "N of positive lean tests at minute m / total positive 10-minute lean tests",
+         "POTS_sensitivity_by_minute.jpeg")
+#
+# Number of OH positive lean tests by minute of standing
+#
+xs<-as.matrix(mydata0[paste0("Delta.Sys.",1:10)]) # change in systolic pressure
+xd<-as.matrix(mydata0[paste0("Delta.Dia.",1:10)]) # change in diastolic pressure
+has<-!is.na(xs) | !is.na(xd) # minutes with at least one reading
+last<-apply(has,1,function(v) if (any(v)) max(which(v)) else 0) # test duration (minutes)
+run.min<-function(x) t(apply(x,1,function(v) cummin(ifelse(is.na(v),Inf,v)))) # min up to each minute
+min.s<-run.min(xs)
+min.d<-run.min(xd)
+pos<-(min.s<=-20) | (min.d<=-10) # OH criterion reached by each minute
+count.TOT<-sapply(1:10,function(m) sum(last>=m)) # tests lasting at least m minutes
+count.POS<-sapply(1:10,function(m) sum(last>=m & pos[,m])) # ...and positive by minute m
+count.PER<-round(100*count.POS/count.TOT)
+Lab<-paste0(count.POS,"/",count.TOT)
+#
+pots.bar(count.PER,Lab,"Min Delta Sys <= -20 or Min Delta Dia <= -10 mmHg or (%)",
+         "N of positive lean tests at minute m / total available lean tests at minute m",
+         "OH_sensitivity_by_minute.jpeg")
+#
+# Number of OI positive lean tests by minute of standing (OI = OH or POTS)
+#
+xs<-as.matrix(mydata0[paste0("Delta.Sys.",1:10)]) # change in systolic pressure
+xd<-as.matrix(mydata0[paste0("Delta.Dia.",1:10)]) # change in diastolic pressure
+xr<-as.matrix(mydata0[paste0("Delta.HR.",1:10)]) # change in heart rate
+has<-!is.na(xs) | !is.na(xd) | !is.na(xr) # minutes with at least one reading
+last<-apply(has,1,function(v) if (any(v)) max(which(v)) else 0) # test duration (minutes)
+run.min<-function(x) t(apply(x,1,function(v) cummin(ifelse(is.na(v),Inf,v)))) # min up to each minute
+run.max<-function(x) t(apply(x,1,function(v) cummax(ifelse(is.na(v),-Inf,v)))) # max up to each minute
+min.s<-run.min(xs)
+min.d<-run.min(xd)
+max.r<-run.max(xr)
+pos<-(min.s<=-20) | (min.d<=-10) | (max.r>=30) # OI criterion reached by each minute
+count.TOT<-sapply(1:10,function(m) sum(last>=m)) # tests lasting at least m minutes
+count.POS<-sapply(1:10,function(m) sum(last>=m & pos[,m])) # ...and positive by minute m
+count.PER<-round(100*count.POS/count.TOT)
+Lab<-paste0(count.POS,"/",count.TOT)
+#
+pots.bar(count.PER,Lab,"OH or POTS criterion met (%)",
+         "N of positive lean tests by minute m / total lean tests lasting at least m minutes",
+         "OI_positive_by_duration.jpeg")
+#
+# POTS and OH positivity of each lean test, and their association
+#
+mydata<-subset.data.frame(mydata0,!is.na(HR.10)) # only 10-minute lean tests
+m.max<-10 # minutes considered (e.g. 6 to compare all tests on the same duration)
+xh<-as.matrix(mydata[paste0("Delta.HR.",1:m.max)]) # change in heart rate
+xs<-as.matrix(mydata[paste0("Delta.Sys.",1:m.max)]) # change in systolic pressure
+xd<-as.matrix(mydata[paste0("Delta.Dia.",1:m.max)]) # change in diastolic pressure
+#
+has<-!is.na(xh) | !is.na(xs) | !is.na(xd) # minutes with at least one reading
+done<-rowSums(has)>0 # days with a lean test
+#
+pots.any<-apply(xh,1,function(v) any(v>=30,na.rm=TRUE)) # HR rise >= 30 bpm at any minute
+oh.any<-apply(xs,1,function(v) any(v<=-20,na.rm=TRUE)) | # systolic drop >= 20 mmHg
+  apply(xd,1,function(v) any(v<=-10,na.rm=TRUE))   # or diastolic drop >= 10 mmHg
+#
+tab<-table(POTS=pots.any[done],OH=oh.any[done])
+print(tab) # counts
+print(round(prop.table(tab,1),2)) # share of OH-positive tests by POTS status
+print(fisher.test(tab))
+#
+# Is the regression coefficient of Delta.HR of 10-minute Lean test predicted 
+# by a test of shorter duration?
+#
+mydata<-subset.data.frame(mydata0,!is.na(Delta.HR.10)) # only 10-minute lean tests
+mydata<-subset.data.frame(mydata,max.Delta.HR>=30) # only positive 10-minute lean tests
+mydata<-mydata[paste0("Delta.HR.",1:10)]
+#
+# Build the regression coefficients for duration from 3 minutes to ten
+#
+for (m in 3:10) {
+  mydata[[paste0("Delta.HR.",m,".beta")]]<-NA
+  for (i in 1:nrow(mydata)) {
+    v<-as.vector(transpose(mydata[i,1:m]))
+    df<-data.frame(time=seq(1,m,1),Delta.HR=v$V1)
+    model<-try(lm(Delta.HR~time,data=df),silent=T)
+    if (is.list(model)) {
+      beta<-model$coefficients[2]
+      if (!is.na(beta)) {
+        mydata[[paste0("Delta.HR.",m,".beta")]][i]<-beta
+      }
+    }
+  }
+}
+#
+# Calculate absolute relative error
+#
+mydata<-mydata[paste0("Delta.HR.",3:10,".beta")] 
+for (m in 3:9) {
+  cname<-paste0("Delta.HR.",m,".beta")
+  mydata[[cname]]<-round(100*abs(mydata[[cname]]-mydata[["Delta.HR.10.beta"]]/mydata[["Delta.HR.10.beta"]]))
+}
+#
+# Plot the errors
+#
+file.name<-"Delta_HR_Slope_relative_absolute_error_by_minute_10_min_LT.jpeg"
+jpeg(file.path("Output","LeanTest",file.name),quality=100,res=100,width=800,height=800)
+max.err<-quantile(mydata[paste0("Delta.HR.",3:9,".beta")],na.rm=T)
+bp<-boxplot(mydata[paste0("Delta.HR.",3:9,".beta")],names=seq(3,9),xlab="Minutes standing",
+            ylab="Delta.HR regression RAE (%)",ylim=c(0,max.err[5]))
+dev.off()
+#
+# Is max.Delta.HR/duration of 10-minute Lean test predicted 
+# by a test of shorter duration?
+#
+mydata<-subset.data.frame(mydata0,!is.na(Delta.HR.10)) # only 10-minute lean tests
+mydata<-subset.data.frame(mydata,max.Delta.HR>=30) # only positive 10-minute lean tests
+mydata<-mydata[paste0("Delta.HR.",1:10)]
+#
+# Build the regression coefficients for duration from 3 minutes to ten
+#
+for (m in 3:10) {
+  mydata[[paste0("Delta.HR.",m,".ratio")]]<-NA
+  for (i in 1:nrow(mydata)) {
+    v<-as.vector(transpose(mydata[i,1:m]))
+    mydata[[paste0("Delta.HR.",m,".ratio")]][i]<-max(v$V1,na.rm=T)/m
+  }
+}
+#
+# Calculate absolute relative error
+#
+mydata<-mydata[paste0("Delta.HR.",3:10,".ratio")] 
+for (m in 3:9) {
+  cname<-paste0("Delta.HR.",m,".ratio")
+  mydata[[cname]]<-round(100*abs(mydata[[cname]]-mydata[["Delta.HR.10.ratio"]]/mydata[["Delta.HR.10.ratio"]]))
+}
+#
+# Plot the errors
+#
+file.name<-"Delta_HR_ratio_relative_absolute_error_by_minute_10_min_LT.jpeg"
+jpeg(file.path("Output","LeanTest",file.name),quality=100,res=100,width=800,height=800)
+max.err<-quantile(mydata[paste0("Delta.HR.",3:9,".ratio")],na.rm=T)
+bp<-boxplot(mydata[paste0("Delta.HR.",3:9,".ratio")],names=seq(3,9),xlab="Minutes standing",
+            ylab="Delta.HR/duration RAE (%)",ylim=c(0,max.err[5]))
+dev.off()
+
+
+
+
+
+
+#
+# Is mean.Delta.HR/duration of 10-minute Lean test predicted 
+# by a test of shorter duration?
+#
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mydata<-subset.data.frame(mydata0,!is.na(Delta.HR.10)) # only 10-minute lean tests
+mydata<-subset.data.frame(mydata,max.Delta.HR>=30) # only positive 10-minute lean tests
+mydata<-subset.data.frame(mydata,select=c(variables))
+for (m in 3:10) {
+  mydata[[paste0("Delta.HR.",m,".ratio")]]<-NA
+  for (i in 1:nrow(mydata)) {
+    v<-as.vector(transpose(mydata[i,1:m]))
+    mydata[[paste0("Delta.HR.",m,".ratio")]][i]<-max(v$V1,na.rm=T)/m
+  }
+}
+mydata[,variables]<-NULL
+NC<-ncol(mydata)
+for (j in 1:(NC-1)) mydata[,j]<-abs(mydata[,j]-mydata[,NC])/mydata[,NC] # relative absolute error
+
+bp<-boxplot(100*mydata[,1:(NC-1)],names=seq(3,9),xlab="Minutes standing",ylab="relative absolute error (%)")
+
+
+mydata<-subset.data.frame(mydata0,!is.na(Delta.HR.10)) # only 10-minute lean tests
+mydata<-subset.data.frame(mydata,max.Delta.HR>=30) # only positive 10-minute lean tests
+mydata<-subset.data.frame(mydata,select=c(variables))
+for (m in 3:10) {
+  mydata[[paste0("Delta.HR.",m,".ratio")]]<-NA
+  for (i in 1:nrow(mydata)) {
+    v<-as.vector(transpose(mydata[i,1:m]))
+    mydata[[paste0("Delta.HR.",m,".ratio")]][i]<-max(v$V1,na.rm=T)
+  }
+}
+mydata[,variables]<-NULL
+NC<-ncol(mydata)
+for (j in 1:(NC-1)) mydata[,j]<-abs(mydata[,j]-mydata[,NC])/mydata[,NC] # relative absolute error
+
+bp<-boxplot(100*mydata[,1:(NC-1)],names=seq(3,9),xlab="Minutes standing",ylab="relative absolute error (%)")
+
+
+
+
+
+
+
+#
+means<-sapply(mydata,mean,na.rm=T) # calculate means
+points(x=1:length(means),y=means,pch=19,col="red") # add means to plot
+means<-round(means,0)
+text(x=(1:length(means))+0.2,y=means,labels=means,cex=1,col="red")
+
+
+
+
+
+
+#
 # Time series
 #
-variables<-c("date","Score_m","Delta.HR.6","Delta.Sys.6","Steps.C")
+variables<-c("date","Score_m","Max.Delta.HR","Min.Delta.Sys","Steps.C")
 start<-"2025-12-01"
 end<-0
 type<-"Lean Test"
@@ -591,7 +703,7 @@ exit.v<-"Score_m"
 variables<-c(exit.v,c("Temp","TA.out","TA.in","TAmean","AH.out","RH.out","Pressure","Light",
                       "Clouds","Precipitation","PM10","PM2.5","SO2","NO","AQI","CO"))
 mydata<-subset.data.frame(mydata0,select=variables)
-nd<-5
+nd<-7
 CoReRaPCA(mydata,exit.v,data.select,nd)
 #
 # Select covariates
@@ -601,7 +713,7 @@ exit.v<-"Score_m"
 variables<-c(exit.v,c("Temp","MRT","TG","TA","AH","RH","TAmean","Pressure","Light",
                       "Clouds","Precipitation","PM10","PM2.5","SO2","NO","AQI","CO"))
 mydata<-subset.data.frame(mydata0,select=variables)
-nd<-5
+nd<-7
 CoReRaPCA(mydata,exit.v,data.select,nd)
 #
 # Select covariates
@@ -609,11 +721,11 @@ CoReRaPCA(mydata,exit.v,data.select,nd)
 data.select<-"Brain_L"
 exit.v<-"Score_m"
 variables<-c(exit.v,c("Sys","Dia","SpO2","Temp",
-                      "SDNN","pNN50","rMSSD","LFnu","HFnu","LFonHF",
-                      "Delta_L","Theta_L","Alpha_L","Beta_L","Gamma_L",
-                      "L.Outer.HbDiff","L.Outer.HbTot"))
+                      "SDNN","pNN50","rMSSD","LFnu","HFnu","LFonHF","HRV.hour",
+                      "Delta_L","Theta_L","Alpha_L","Beta_L","Gamma_L","EEG.hour",
+                      "L.Outer.HbDiff","L.Outer.HbTot","fNIRS.hour"))
 mydata<-subset.data.frame(mydata0,select=variables)
-nd<-1
+nd<-5
 CoReRaPCA(mydata,exit.v,data.select,nd)
 #
 # Select covariates
@@ -622,10 +734,10 @@ data.select<-"Brain_R"
 exit.v<-"Score_m"
 variables<-c(exit.v,c("Sys","Dia","SpO2","Temp",
                       "SDNN","pNN50","rMSSD","LFnu","HFnu","LFonHF",
-                      "Delta_R","Theta_R","Alpha_R","Beta_R","Gamma_R",
-                      "R.Outer.HbDiff","R.Outer.HbTot"))
+                      "Delta_R","Theta_R","Alpha_R","Beta_R","Gamma_R","EEG.hour",
+                      "R.Outer.HbDiff","R.Outer.HbTot","fNIRS.hour"))
 mydata<-subset.data.frame(mydata0,select=variables)
-nd<-1
+nd<-5
 CoReRaPCA(mydata,exit.v,data.select,nd)
 #
 # Select covariates
@@ -633,19 +745,19 @@ CoReRaPCA(mydata,exit.v,data.select,nd)
 data.select<-"Brain"
 exit.v<-"Score_m"
 variables<-c(exit.v,c("Sys","Dia","SpO2","Temp",
-                      "SDNN","pNN50","rMSSD","LFnu","HFnu","LFonHF",
-                      "Delta","Theta","Alpha","Beta","Gamma",
-                      "Outer.HbDiff","Outer.HbTot"))
+                      "SDNN","pNN50","rMSSD","LFnu","HFnu","LFonHF","HRV.hour",
+                      "Delta","Theta","Alpha","Beta","Gamma","EEG.hour",
+                      "Outer.HbDiff","Outer.HbTot","fNIRS.hour"))
 mydata<-subset.data.frame(mydata0,select=variables)
-nd<-1
+nd<-7
 CoReRaPCA(mydata,exit.v,data.select,nd)
 #
 # Select covariates
 #
 data.select<-"Lean Test"
-exit.v<-"Score_m"
+exit.v<-"notafk"
 variables<-c(exit.v,c("HR","Delta.HR.1","Delta.HR.2","Delta.HR.3","Delta.HR.4","Delta.HR.5",
-                      "Delta.HR.6","Delta.HR.7","Delta.HR.8","Delta.HR.9","Delta.HR.10",
+                      "Delta.HR.6","Delta.HR.7","Delta.HR.8","Delta.HR.9","Delta.HR.10","mean.Delta.HR","LT.hour",
                       "Sys","Sys.1","Sys.2","Sys.3","Sys.4","Sys.5","Sys.6","Sys.7","Sys.8","Sys.9","Sys.10",
                       "Dia","Dia.1","Dia.2","Dia.3","Dia.4","Dia.5","Dia.6","Dia.7","Dia.8","Dia.9","Dia.10"))
 mydata<-subset.data.frame(mydata0,select=variables)
@@ -728,33 +840,68 @@ mydata0<-read.csv(file.name,header=T,sep=",")
 #
 # Select model 
 #
-evs<-c("Score_m")
+evs<-c("Score_m","notafk","Score_T","Alpha")
 dsel<-"Climate_BG"
 cv<-c("MRT","AH","TAmean","Pressure","Light","Clouds","Precipitation","AQI","Steps.C")
 tp<-"multinomial"
 al<-0.05
-ds<-c(0,1,8,16,32)
-fm<-c("gaussian","binomial")
+ds<-c(0)
+fm<-c("binomial","gaussian")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=4)
+#
+# Select model
+#
+evs<-c("Score_m","Score_T","max.Delta.HR","notafk","Alpha")
+dsel<-"fNIRS"
+cv<-c("Outer.Hb02","Outer.HbTot",
+      "Inner.Hb02","Inner.HbTot",
+      "Temp","SpO2","TA.in")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("binomial","gaussian")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=3)
+#
+# Select model
+#
+evs<-c("Score_m")
+dsel<-"fNIRS_L"
+cv<-c("L.Outer.Hb02","L.Outer.HbTot",
+      "L.Inner.Hb02","L.Inner.HbTot",
+      "Temp","SpO2")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1)
+fm<-c("binomial","gaussian")
 DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
 #
 # Select model
 #
 evs<-c("Score_m")
-dsel<-"Brain"
-cv<-c("Theta","Alpha","Beta","Gamma",
-      "Outer.Hb02","Outer.HbTot",
-      "Inner.Hb02","Inner.HbTot",
-      "MRT","Temp","SpO2","Steps.C")
+dsel<-"fNIRS_R"
+cv<-c("R.Outer.Hb02","R.Outer.HbTot",
+      "R.Inner.Hb02","R.Inner.HbTot",
+      "Temp","SpO2")
 tp<-"multinomial"
 al<-0.05
-ds<-c(0,1,8)
-fm<-c("gaussian","binomial")
-nl<-14
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,nlag=nl)
+ds<-c(0,1)
+fm<-c("binomial","gaussian")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
 #
 # Select model
 #
-evs<-c("Score_m")
+evs<-c("Score_m","Score_T","max.Delta.HR","notafk")
+dsel<-"EEG"
+cv<-c("Theta","Alpha","Beta","Gamma")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("binomial","gaussian")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+# Select model
+#
+evs<-c("Score_m","Score_T","Steps.C")
 dsel<-"Drugs"
 cv<-c("Provigil","Bupropion",
       "Aniracetam","D_serine","Sarcosine","Destrometorfano",
@@ -764,60 +911,61 @@ cv<-c("Provigil","Bupropion",
       "Ketotifen","Desloratadina",
       "Pioglitazone","Deursil",
       "Mestinon","Etilefrine","Acetazolamide",
-      "Nimodipine","Compression.suit",
-      "Creatine","ALCar",
+      "Nimodipine","Compression.suit","TAmean","Steps.C")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,3,7,14,21,28)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
+#
+# Select model
+#
+evs<-c("Score_m","Score_T","Steps.C")
+dsel<-"Supplements"
+cv<-c("Creatine","ALCar",
       "VitE","VitD3","B12.Tot",
       "Thiamin","Riboflavin","Niacin","VitB6","Folic.acid",          
       "Folinic.acid","Biotin",   
       "Pantothenic.acid","Choline.bitartrate","Myo.Inositol",  
-      "DHA","EPA")
+      "Omega3","Steps.C")
 tp<-"multinomial"
 al<-0.05
-ds<-c(0,1,8,32)
+ds<-c(0,1,3,7,14,21,28)
 fm<-c("gaussian","binomial")
-nl<-14
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,nlag=nl)
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
 #
 # Select model
 #
-evs<-c("Score_m")
+evs<-c("Score_T","Score_m","notafk","SDNN","max.Delta.HR","Outer.Hb02","Alpha")
 dsel<-"Exercise"
-cv<-c("Steps.C","WL.bin")
+cv<-c("Steps.C*Bike","TAmean","TA","Provigil")
 tp<-"multinomial"
 al<-0.05
-ds<-c(0,1,3)
+ds<-c(1)
 fm<-c("gaussian","binomial")
-nl<-14
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,nlag=nl)
-
-
-
-
-
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
 #
 # Select covariates 
 #
-data.select<-"HbTot"
-covariates<-c("Theta","Alpha","Beta","Gamma",
-              "MRT","Temp","SpO2","Steps.B")
-days<-c(0,1,2,7)
-DynaReg(mydata0,exit.vs="Outer.HbTot",covariates,type="multinomial",alpha=0.05,data.select,days)
+evs<-c("Score_m","Score_T","max.Delta.HR","notafk")
+dsel<-"HRV"
+cv<-c("SDNN","pNN50","rMSSD","LFonHF","Steps.C")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
 #
 # Select covariates 
 #
-data.select<-"HRV"
-covariates<-c("SDNN","pNN50","rMSSD","LFonHF","Steps.C","TG","Provigil","Mestinon","Etilefrine")
-days<-c(0,1,2,7)
-DynaReg(mydata0,exit.vs,covariates,type="multinomial",alpha=0.05,data.select,days)
-
-
-#
-# Select covariates 
-#
-data.select<-"Lean test"
-covariates<-c("max.Delta.HR","min.PP","min.Delta.Sys","ST","ST.hour","Steps.C","TA.out")
-days<-c(0,1,2,4,7)
-DynaReg(mydata0,exit.vs,covariates,type="multinomial",alpha=0.05,data.select,days)
+evs<-c("Score_m")
+dsel<-"Lean test"
+cv<-c("max.Delta.HR","ST","LT.hour","Steps.C","TA.in")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
 #
 #---- Normalized diagrams of time series ---------------------------------------
 #

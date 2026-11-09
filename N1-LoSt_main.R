@@ -59,8 +59,8 @@ Score$Temp<-as.numeric(Score$Temp)
 Score$SpO2<-as.numeric(Score$SpO2)
 Score$glucose<-as.numeric(Score$glucose)
 Score$ketones<-as.numeric(Score$ketones)
-Score$ST<-as.numeric(Score$ST)
-Score$ST.hour<-as.numeric(Score$ST.hour)
+Score$LT<-as.numeric(Score$LT)
+Score$LT.hour<-as.numeric(Score$LT.hour)
 Score$Sys.1<-as.numeric(Score$Sys.1)
 Score$Dia.1<-as.numeric(Score$Dia.1)
 Score$HR.1<-as.numeric(Score$HR.1)
@@ -393,7 +393,7 @@ myHRVdata<-data.frame(date=c(rep(NA,days)),time=c(rep(NA,days)),avgHR=c(rep(NA,d
 #
 for (i in 1:days) {
   myHRVdata$date[i]<-as.integer(epoch(substr(hrv.data[[i]]$datetime,1,10),"YMD"))
-  myHRVdata$time[i]<-substr(hrv.data[[i]]$datetime,12,19)
+  myHRVdata$HRV.hour[i]<-as.numeric(substr(hrv.data[[i]]$datetime,12,13))
   myHRVdata$avgHR[i]<-mean(hrv.data[[i]]$Beat$niHR,na.rm=T)
   myHRVdata$avgRR[i]<-mean(hrv.data[[i]]$Beat$RR,na.rm=T)
   myHRVdata$SDNN[i]<-hrv.data[[i]]$TimeAnalysis[[1]]$SDNN
