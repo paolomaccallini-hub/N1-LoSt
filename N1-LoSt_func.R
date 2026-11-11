@@ -1830,6 +1830,16 @@ LiftME<-function(Score,BIA) {
   #
   mydata$WL.vol<-rowSums(mydata[setdiff(names(mydata),"date")],na.rm=TRUE)
   #
+  # Volume by muscle group, from the group recorded in WL
+  #
+  grp<-sort(unique(na.omit(as.character(Score$WL))))
+  grp<-setdiff(grp,"0") # 0 = no training
+  wl<-as.character(Score$WL)
+  for (g in grp) {
+    vol.g<-ifelse(!is.na(wl) & wl==g,mydata$WL.vol,0)
+    mydata[[paste0("WL.vol.",make.names(g))]]<-vol.g
+  }
+  #
   # Result
   #
   return(mydata)
@@ -2990,19 +3000,21 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
   MAXnd<-32 # we assume that the effects of covariates degrades linearly and is zero at day MAXnd 
   days<-days[days<=MAXnd]
   #
-  # Are there any interactions among covariates?
+  # Are there any interactions among covariates? (all lower-order terms are added)
   #
   for (cv in covariates[grepl("*",covariates,fixed=TRUE)]) {
     vars<-trimws(strsplit(cv,"*",fixed=TRUE)[[1]])
     if (!all(vars %in% names(mydata0))) stop("unknown variable in ",cv)
-    name<-paste(vars,collapse="_x_")
-    x<-rep(1,nrow(mydata0))
-    for (v in vars) {
-      z<-mydata0[[v]]
-      x<-x*z
+    covariates<-setdiff(covariates,cv)
+    for (k in 2:length(vars)) { # all products of 2, 3, ... variables
+      for (s in combn(vars,k,simplify=FALSE)) {
+        name<-paste(s,collapse="_x_")
+        x<-rep(1,nrow(mydata0))
+        for (v in s) x<-x*(mydata0[[v]]-mean(mydata0[[v]],na.rm=TRUE)) # centred product
+        mydata0[[name]]<-x
+        covariates<-c(covariates,name)
+      }
     }
-    mydata0[[name]]<-x
-    covariates[covariates==cv]<-name
     covariates<-unique(c(covariates,vars)) # main effects
   }
   #
@@ -3084,7 +3096,7 @@ DynaReg<-function(mydata0,exit.vs,covariates,type="marginal",alpha=0.05,
     # Edit matrices for results
     #
     index<-which(results[,1]%in%temp)
-    results2<-results[index,]
+    results2<-results[index,,drop=FALSE]
     #
     # Calculate the number of lags to consider in dynamic regression 
     # on detrended exit variable

@@ -717,65 +717,61 @@ CoReRaPCA(mydata,exit.v,data.select,nd)
 file.name<-"Output/all_daily_data.csv"
 mydata0<-read.csv(file.name,header=T,sep=",")
 #
-# Select exit variable
-#
-exit.vs<-c("Score_m","Score_T","notafk") 
-#
-# Select covariates 
-#
-covariates<-c("Provigil","Bupropion","Sulbutiamine",
-              "Aniracetam","D_serine","Sarcosine",
-              "Beta.Lactam","Corticosteroid","Nasonex",
-              "Pregnenolone","DHEA","Finasteride.Topic","Melatonin","T4","T3",
-              "Destrometorfano","Tachipirine","Ibuprofene",
-              "Compression.suit","Compression.socks",
-              "Ketotifen","Desloratadina",
-              "Pioglitazone","Deursil","Bismuth.subsalicylate",
-              "Mestinon","Etilefrine","Acetazolamide","Nimodipine",
-              "Creatine","ALCar","B.complex",
-              "VitE","VitD3","HydroxycobalaminTot","B12.Tot",
-              "Thiamin","Riboflavin","Niacin","VitB6","Folic.acid",          
-              "Folinic.acid","Cyanocobalamin","Biotin",               
-              "Pantothenic.acid","Choline.bitartrate","Myo.Inositol",  
-              "Omega3","EPA","DHA",
-              "Work.an","Work.a","Steps","Steps.B","Steps.C","Bike","Run","ST",
-              "Assistant","Cleaning","Relatives","FLU","Travel","blood.draw",
-              "kcal","protein.g","carbo.g","fat.g",
-              "TA.in","TA.in.out","AH.in","RH.in",
-              "TA.out","AH.out","RH.out","Light",
-              "TA","TG","MRT","AH","RH","TG.night","TG.day.night","TG.day",
-              "PM2.5","PM10","NO","NO2","CO","SO2","AQI",
-              "TAmean","Pressure","Humidity","Clouds","Abs.Humidity",
-              "Lamp.power","Lamp.peak_lambda","Lamp.min.on",
-              "SpO2","Temp","glucose","ketones",
-              "SDNN","pNN50","rMSSD","LFnu","HFnu","LFonHF","TotPower",
-              "Delta","Theta","Alpha","Beta","Gamma",
-              "Delta_L","Theta_L","Alpha_L","Beta_L","Gamma_L",
-              "Delta_R","Theta_R","Alpha_R","Beta_R","Gamma_R",
-              "L.Outer.HbDiff","L.Outer.HbTot",
-              "R.Outer.HbDiff","R.Outer.HbTot",
-              "L.Outer.Hb","L.Outer.Hb02",
-              "R.Outer.Hb","R.Outer.Hb02",
-              "L.Outer.660","R.Outer.660",
-              "L.Inner.HbDiff","L.Inner.HbTot",
-              "R.Inner.HbDiff","R.Inner.HbTot",
-              "L.Inner.Hb","L.Inner.Hb02",
-              "R.Inner.Hb","R.Inner.Hb02",
-              "L.Inner.660","R.Inner.660",
-              "HR","Delta.HR.1","Delta.HR.2","Delta.HR.3","Delta.HR.4","Delta.HR.5",
-              "Delta.HR.6","Delta.HR.7","Delta.HR.8","Delta.HR.9","Delta.HR.10",
-              "Sys","Sys.1","Sys.2","Sys.3","Sys.4","Sys.5","Sys.6","Sys.7","Sys.8","Sys.9","Sys.10",
-              "Dia","Dia.1","Dia.2","Dia.3","Dia.4","Dia.5","Dia.6","Dia.7","Dia.8","Dia.9","Dia.10",
-              "SVI","SVI.1","SVI.2","SVI.3","SVI.4","SVI.5","SVI.6","SVI.7","SVI.8","SVI.9","SVI.10",
-              "CPI","CPI.1","CPI.2","CPI.3","CPI.4","CPI.5","CPI.6","CPI.7","CPI.8","CPI.9","CPI.10",
-              "MAP","MAP.1","MAP.2","MAP.3","MAP.4","MAP.5","MAP.6","MAP.7","MAP.8","MAP.9","MAP.10",
-              "PP","PP.1","PP.2","PP.3","PP.4","PP.5","PP.6","PP.7","PP.8","PP.9","PP.10")
-#
 # Marginal regression
 #
-type<-"marginal"
-alpha<-0.05
-DynaReg(mydata0,exit.vs,covariates,type,alpha)
+evs<-c("Score_m","Score_T","notafk") 
+dsel<-"ALL"
+cv<-c("Provigil","Bupropion","Sulbutiamine",
+      "Aniracetam","D_serine","Sarcosine",
+      "Beta.Lactam","Corticosteroid","Nasonex",
+      "Pregnenolone","DHEA","Finasteride.Topic","Melatonin","T4","T3",
+      "Destrometorfano","Tachipirine","Ibuprofene",
+      "Compression.suit","Compression.socks",
+      "Ketotifen","Desloratadina",
+      "Pioglitazone","Deursil","Bismuth.subsalicylate",
+      "Mestinon","Etilefrine","Acetazolamide","Nimodipine",
+      "Creatine","ALCar","B.complex",
+      "VitE","VitD3","HydroxycobalaminTot","B12.Tot",
+      "Thiamin","Riboflavin","Niacin","VitB6","Folic.acid",          
+      "Folinic.acid","Cyanocobalamin","Biotin",               
+      "Pantothenic.acid","Choline.bitartrate","Myo.Inositol",  
+      "Omega3","EPA","DHA",
+      "Work.an","Work.a","Steps","Steps.B","Steps.C","Bike","Run",
+      "Assistant","Cleaning","Relatives","FLU","Travel","blood.draw",
+      "kcal","protein.g","carbo.g","fat.g",
+      "TA.in","TA.in.out","AH.in","RH.in",
+      "TA.out","AH.out","RH.out","Light",
+      "TA","TG","MRT","AH","RH","TG.night","TG.day.night","TG.day",
+      "PM2.5","PM10","NO","NO2","CO","SO2","AQI",
+      "TAmean","Pressure","Humidity","Clouds","Abs.Humidity",
+      "Lamp.power","Lamp.peak_lambda","Lamp.min.on",
+      "SpO2","Temp","glucose","ketones",
+      "SDNN","pNN50","rMSSD","LFnu","HFnu","LFonHF","TotPower",
+      "Delta","Theta","Alpha","Beta","Gamma",
+      "Delta_L","Theta_L","Alpha_L","Beta_L","Gamma_L",
+      "Delta_R","Theta_R","Alpha_R","Beta_R","Gamma_R",
+      "L.Outer.HbDiff","L.Outer.HbTot",
+      "R.Outer.HbDiff","R.Outer.HbTot",
+      "L.Outer.Hb","L.Outer.Hb02",
+      "R.Outer.Hb","R.Outer.Hb02",
+      "L.Outer.660","R.Outer.660",
+      "L.Inner.HbDiff","L.Inner.HbTot",
+      "R.Inner.HbDiff","R.Inner.HbTot",
+      "L.Inner.Hb","L.Inner.Hb02",
+      "R.Inner.Hb","R.Inner.Hb02",
+      "L.Inner.660","R.Inner.660",
+      "HR","Delta.HR.1","Delta.HR.2","Delta.HR.3","Delta.HR.4","Delta.HR.5",
+      "Delta.HR.6","Delta.HR.7","Delta.HR.8","Delta.HR.9","Delta.HR.10",
+      "Sys","Sys.1","Sys.2","Sys.3","Sys.4","Sys.5","Sys.6","Sys.7","Sys.8","Sys.9","Sys.10",
+      "Dia","Dia.1","Dia.2","Dia.3","Dia.4","Dia.5","Dia.6","Dia.7","Dia.8","Dia.9","Dia.10",
+      "Delta.HR.1","Delta.HR.2","Delta.HR.3","Delta.HR.4","Delta.HR.5",
+      "Delta.HR.6","Delta.HR.7","Delta.HR.8","Delta.HR.9","Delta.HR.10",
+      "PP","PP.1","PP.2","PP.3","PP.4","PP.5","PP.6","PP.7","PP.8","PP.9","PP.10","LT")
+tp<-"marginal"
+al<-0.05
+ds<-c(0,1,2,4,8,16,32)
+fm<-c("binomial","gaussian")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
 #
 #---- Multinomial dynamic regressions ------------------------------------------
 #
@@ -783,69 +779,173 @@ DynaReg(mydata0,exit.vs,covariates,type,alpha)
 #
 file.name<-"Output/all_daily_data.csv"
 mydata0<-read.csv(file.name,header=T,sep=",")
+mydata0$Steps.C.Lag1<-lag(mydata0$Steps.C,1) 
+mydata0$WL.bin.Lag1<-lag(mydata0$WL.bin,1) 
 #
-# Select model 
+##--- Study of EEG -------------------------------------------------------------
 #
-evs<-c("Score_m","notafk","Score_T","Alpha")
-dsel<-"Climate_BG"
-cv<-c("MRT","AH","TAmean","Pressure","Light","Clouds","Precipitation","AQI","Steps.C")
-tp<-"multinomial"
-al<-0.05
-ds<-c(0)
-fm<-c("binomial","gaussian")
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=4)
-#
-# Select model
-#
-evs<-c("Score_m","Score_T","max.Delta.HR","notafk","Alpha")
-dsel<-"fNIRS"
-cv<-c("Outer.Hb02","Outer.HbTot",
-      "Inner.Hb02","Inner.HbTot",
-      "Temp","SpO2","TA.in")
-tp<-"multinomial"
-al<-0.05
-ds<-c(0)
-fm<-c("binomial","gaussian")
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=3)
-#
-# Select model
-#
-evs<-c("Score_m")
-dsel<-"fNIRS_L"
-cv<-c("L.Outer.Hb02","L.Outer.HbTot",
-      "L.Inner.Hb02","L.Inner.HbTot",
-      "Temp","SpO2")
-tp<-"multinomial"
-al<-0.05
-ds<-c(0,1)
-fm<-c("binomial","gaussian")
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
-#
-# Select model
-#
-evs<-c("Score_m")
-dsel<-"fNIRS_R"
-cv<-c("R.Outer.Hb02","R.Outer.HbTot",
-      "R.Inner.Hb02","R.Inner.HbTot",
-      "Temp","SpO2")
-tp<-"multinomial"
-al<-0.05
-ds<-c(0,1)
-fm<-c("binomial","gaussian")
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
-#
-# Select model
-#
-evs<-c("Score_m","Score_T","max.Delta.HR","notafk")
+evs<-c("Score_m","Score_T","notafk")
 dsel<-"EEG"
-cv<-c("Theta","Alpha","Beta","Gamma")
+cv<-c("Theta","Alpha","Beta","Gamma","Temp","SpO2","EEG.hour","Steps.C.Lag1","WL.bin.Lag1","TA.in")
 tp<-"multinomial"
 al<-0.05
 ds<-c(0)
-fm<-c("binomial","gaussian")
+fm<-c("gaussian","binomial")
 DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
 #
-# Select model
+evs<-c("Score_m","Score_T","notafk")
+dsel<-"EEG_L"
+cv<-c("Theta_L","Alpha_L","Beta_L","Gamma_L","Temp","SpO2","EEG.hour","Steps.C.Lag1","WL.bin.Lag1","TA.in")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+evs<-c("Score_m","Score_T","notafk")
+dsel<-"EEG_R"
+cv<-c("Theta_R","Alpha_R","Beta_R","Gamma_R","Temp","SpO2","EEG.hour","Steps.C.Lag1","WL.bin.Lag1","TA.in")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+##--- Study of fNIRS -------------------------------------------------------------
+#
+evs<-c("Score_m","Score_T","notafk","Delta","Theta","Alpha","Beta","Gamma")
+dsel<-"fNIRS"
+cv<-c("Outer.Hb02","Outer.HbTot","Inner.Hb02","Inner.HbTot","Temp","SpO2",
+      "fNIRS.hour","Steps.C.Lag1","WL.bin.Lag1","TA.in","TG")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+evs<-c("Score_m","Score_T","notafk")
+dsel<-"fNIRS_L"
+cv<-c("L.Outer.Hb02","L.Outer.HbTot","L.Inner.Hb02","L.Inner.HbTot","Temp","SpO2",
+      "fNIRS.hour","Steps.C.Lag1","WL.bin.Lag1","TA.in")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+evs<-c("Score_m","Score_T","notafk")
+dsel<-"fNIRS_R"
+cv<-c("R.Outer.Hb02","R.Outer.HbTot","R.Inner.Hb02","R.Inner.HbTot","Temp","SpO2",
+      "fNIRS.hour","Steps.C.Lag1","WL.bin.Lag1","TA.in")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+##--- Study of HRV -------------------------------------------------------------
+#
+evs<-c("Score_m","Score_T","notafk")
+dsel<-"Heart"
+cv<-c("SDNN","rMSSD","LFonHF","HR","Sys","Dia","Temp","SpO2","HRV.hour","Steps.C.Lag1","WL.bin.Lag1","TA.in")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+##--- Study of Lean Tests-------------------------------------------------------
+#
+evs<-c("Score_m","Score_T","notafk")
+dsel<-"Lean Test"
+cv<-c("max.Delta.HR","Temp","SpO2","LT","LT.hour","Steps.C.Lag1","WL.bin.Lag1","TA.in")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+mydata<-subset.data.frame(mydata0,LT==10) # restrict to 10-miute lean tests
+evs<-c("max.Delta.HR")
+dsel<-"Lean Test"
+cv<-c("Score_m","Temp","SpO2","LT.hour","Steps.C.Lag1","WL.bin.Lag1","TA.in")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+##--- Study of climate ---------------------------------------------------------
+#
+evs<-c("Score_m","Score_T")
+dsel<-"Black Globe"
+cv<-c("TG","AH","TAmean","AQI","Pressure","Clouds")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=3)
+#
+evs<-c("Score_m","Score_T")
+dsel<-"Bresser"
+cv<-c("TA.out","AH.out","TAmean","AQI","Pressure","Clouds")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=3)
+#
+##--- Study of exertion --------------------------------------------------------
+#
+evs<-c("Score_m","PEM","notafk","Alpha")
+dsel<-"Exertion 1"
+cv<-c("Work.a*WL.bin")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,2,4,8)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+evs<-c("Score_m","Score_T","notafk","mean.Delta.HR","Alpha","SDNN","MAP","PEM")
+dsel<-"Exertion 2"
+cv<-c("Work.a*WL.vol")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,2,4,8)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+evs<-c("max.Delta.HR","min.Delta.Sys")
+dsel<-"Exertion 4"
+cv<-c("Work.a*WL.vol","LT","LT.hour")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,14)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+mydata<-subset.data.frame(mydata0,LT==10) # restrict to 10-minute lean tests
+evs<-c("max.Delta.HR","min.Delta.Sys")
+dsel<-"Exertion 5"
+cv<-c("Work.a*WL.vol","LT.hour")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,14)
+fm<-c("gaussian","binomial")
+DynaReg(mydata,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+#
+evs<-c("Score_m","Score_T","notafk","mean.Delta.HR","Alpha","SDNN","MAP","PEM")
+dsel<-"Exertion 6"
+mydata0$WL.vol.arm_shoulder<-mydata0$WL.vol.biceps+mydata0$WL.vol.triceps+mydata0$WL.vol.delts
+cv<-c("WL.vol.back","WL.vol.arm_shoulder","WL.vol.legs","WL.vol.pecs")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+##--- Study of drugs and supplements--------------------------------------------
 #
 evs<-c("Score_m","Score_T","Steps.C")
 dsel<-"Drugs"
@@ -857,14 +957,34 @@ cv<-c("Provigil","Bupropion",
       "Ketotifen","Desloratadina",
       "Pioglitazone","Deursil",
       "Mestinon","Etilefrine","Acetazolamide",
-      "Nimodipine","Compression.suit","TAmean","Steps.C")
+      "Nimodipine","Compression.suit","TAmean")
 tp<-"multinomial"
 al<-0.05
-ds<-c(0,1,3,7,14,21,28)
+ds<-c(0,1,2,8,16,32)
 fm<-c("gaussian","binomial")
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
 #
-# Select model
+evs<-c("Score_m","Score_T","Steps.C","notafk","mean.Delta.HR")
+dsel<-"Drugs 2"
+cv<-c("Provigil","Bupropion","Aniracetam","D_serine","Sarcosine",
+      "Tachipirine","Ibuprofene",
+      "Corticosteroid","Melatonin","T4",
+      "Ketotifen","Etilefrine","TG","Steps.C")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,2,8,16,32)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
+#
+evs<-c("Alpha","Score_m")
+dsel<-"Drugs 3"
+cv<-c("Aniracetam*D_serine*Sarcosine",
+      "TG","Steps.C")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,2,8,16,32)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
 #
 evs<-c("Score_m","Score_T","Steps.C")
 dsel<-"Supplements"
@@ -873,45 +993,41 @@ cv<-c("Creatine","ALCar",
       "Thiamin","Riboflavin","Niacin","VitB6","Folic.acid",          
       "Folinic.acid","Biotin",   
       "Pantothenic.acid","Choline.bitartrate","Myo.Inositol",  
-      "Omega3","Steps.C")
+      "EPA","DHA","Steps.C")
 tp<-"multinomial"
 al<-0.05
-ds<-c(0,1,3,7,14,21,28)
+ds<-c(0,1,2,8,16,32)
 fm<-c("gaussian","binomial")
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
 #
-# Select model
-#
-evs<-c("Score_T","Score_m","notafk","SDNN","max.Delta.HR","Outer.Hb02","Alpha")
-dsel<-"Exercise"
-cv<-c("Steps.C*Bike","TAmean","TA","Provigil")
-tp<-"multinomial"
-al<-0.05
-ds<-c(1)
-fm<-c("gaussian","binomial")
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
-#
-# Select covariates 
-#
-evs<-c("Score_m","Score_T","max.Delta.HR","notafk")
-dsel<-"HRV"
-cv<-c("SDNN","pNN50","rMSSD","LFonHF","Steps.C")
-tp<-"multinomial"
-al<-0.05
-ds<-c(0,1)
-fm<-c("gaussian","binomial")
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
-#
-# Select covariates 
+##--- Study of ketones, glucose, and diet --------------------------------------
 #
 evs<-c("Score_m")
-dsel<-"Lean test"
-cv<-c("max.Delta.HR","ST","LT.hour","Steps.C","TA.in")
+dsel<-"Ketones"
+cv<-c("ketones","Temp","Steps.C","Weight","Body.Fat","TAmean")
 tp<-"multinomial"
 al<-0.05
 ds<-c(0)
 fm<-c("gaussian","binomial")
-DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm)
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=3)
+#
+evs<-c("Score_m")
+dsel<-"Glucose"
+cv<-c("glucose","Temp","Steps.C","Weight","Body.Fat","TAmean")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=3)
+#
+evs<-c("Score_m","ketones","glucose")
+dsel<-"Diet"
+cv<-c("protein.g","fat.g","carbo.g")
+tp<-"multinomial"
+al<-0.05
+ds<-c(0,1,2,4)
+fm<-c("gaussian","binomial")
+DynaReg(mydata0,exit.vs=evs,covariates=cv,type=tp,alpha=al,data.select=dsel,days=ds,family=fm,unit.t=1)
 #
 #---- Normalized diagrams of time series ---------------------------------------
 #
